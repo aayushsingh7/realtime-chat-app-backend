@@ -10,7 +10,7 @@ import chatRoutes from "./routes/chatRoutes";
 import cookieParser from "cookie-parser";
 
 app.use(express.json());
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ origin:["https://realtime-chat-app-07.netlify.app", "https://api.cloudinary.com"], credentials: true }));
 app.use(cookieParser());
 app.use("/api", userRoutes);
 app.use("/api", messageRoutes);
@@ -22,7 +22,7 @@ let server = app.listen(process.env.PORT, () => {
 
 const io = require("socket.io")(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: "https://realtime-chat-app-07.netlify.app",
   },
 });
 
