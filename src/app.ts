@@ -10,7 +10,7 @@ import chatRoutes from "./routes/chatRoutes";
 import cookieParser from "cookie-parser";
 
 app.use(express.json());
-app.use(cors({ origin:["https://realtime-chat-app-07.netlify.app", "https://api.cloudinary.com"], credentials: true }));
+app.use(cors({ origin:true, credentials: true }));
 app.use(cookieParser());
 app.use("/api", userRoutes);
 app.use("/api", messageRoutes);
