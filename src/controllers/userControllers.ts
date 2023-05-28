@@ -78,9 +78,9 @@ const login: RequestHandler = async (req, res) => {
       })
       res
         .status(200)
-        .send({ success: true, msg: "User loggedin successfully" });
+        .send({ success: true, message: "User loggedin successfully" });
     } else {
-      res.status(400).send({ success: false, msg: "Invalid Credentials" });
+      res.status(400).send({ success: false, message: "Invalid Credentials" });
     }
   } catch (err:any) {
     res.status(500).send({ success:false , message:err.message});
@@ -198,7 +198,7 @@ const getLoggedInUser: RequestHandler = async(req,res)=> {
 const logoutUser: RequestHandler = async(req,res)=> {
   try{
   res.clearCookie("chatbox")
-  res.status(200).send({success:true,msg:"Logout successfully"})
+  res.status(200).send({success:true,message:"Logout successfully"})
   }catch(err:any){
     res.status(500).send({ success:false , message:err.message});
   }
