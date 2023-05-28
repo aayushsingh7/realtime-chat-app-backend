@@ -34,15 +34,19 @@ const register: RequestHandler = async (req, res) => {
       message: "Something went wrong while registering user ",
     });
   } else {
+
     const token = await jwt.sign(
       { _id: newUser._id },
       `${process.env.SECRET_KEY}`
     );
+   
     res.cookie("chatbox",token,{
       httpOnly:true,
       secure:true,
-      maxAge:21* 24 * 60 * 60 * 1000
+      maxAge:21* 24 * 60 * 60 * 1000,
+      sameSite:"none"
     })
+
     res
       .status(200)
       .send({ success: true, message: "User registered successfully" });
@@ -71,11 +75,14 @@ const login: RequestHandler = async (req, res) => {
         { _id: isUserExists._id },
         `${process.env.SECRET_KEY}`
       );
+
       res.cookie("chatbox",token,{
         httpOnly:true,
         secure:true,
-        maxAge:21* 24 * 60 * 60 * 1000
+        maxAge:21* 24 * 60 * 60 * 1000,
+        sameSite:"none"
       })
+
       res
         .status(200)
         .send({ success: true, message: "User loggedin successfully" });
