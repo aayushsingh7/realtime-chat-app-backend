@@ -4,7 +4,7 @@ import chatControllers from '../controllers/chatControllers'
 import userAuthentication from '../middleware/userAuthentication'
 import cookieParser from 'cookie-parser'
 import handleFileUpload from '../middleware/handleFileUploads'
-import editProfileImage from '../middleware/EditProfileImage'
+import editProfileImage from '../middleware/editProfileImage'
 chatRoutes.use(cookieParser())
 
 chatRoutes.put("/clear-chat",chatControllers.clearChat)
