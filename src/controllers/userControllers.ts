@@ -40,8 +40,9 @@ const register: RequestHandler = async (req, res) => {
     );
     res.cookie("chatbox",token,{
       httpOnly:true,
-      secure:false,
-      maxAge:21* 24 * 60 * 60 * 1000
+      secure:true,
+      maxAge:21* 24 * 60 * 60 * 1000,
+      sameSite:false,
     })
     res
       .status(200)
@@ -73,8 +74,9 @@ const login: RequestHandler = async (req, res) => {
       );
       res.cookie("chatbox",token,{
         httpOnly:true,
-        secure:false,
-        maxAge:21* 24 * 60 * 60 * 1000
+        secure:true,
+        maxAge:21* 24 * 60 * 60 * 1000,
+        sameSite:false,
       })
       res
         .status(200)
