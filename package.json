@@ -2,7 +2,7 @@
   "name": "server",
   "version": "1.0.0",
   "description": "This is a realtime chat app",
-  "main": "src/app.ts",
+  "main": "dist/app.js",
   "scripts": {
     "start": "node dist/app.js",
     "build": "tsc",
