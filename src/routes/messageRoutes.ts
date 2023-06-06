@@ -7,5 +7,6 @@ const messageRoutes = express.Router()
 
 messageRoutes.post("/new-message",fileUploadMiddleware,userAuthentication,messageController.addMessage)
 messageRoutes.post("/add-alert-message",userAuthentication,messageController.addEventAlertMessage)
+messageRoutes.delete("/delete-message",userAuthentication,messageController.deleteMessage)
 
 export default messageRoutes

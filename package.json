@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "This is a realtime chat app",
   "main": "src/app.ts",
- "scripts": {
+  "scripts": {
     "start": "node dist/app.js",
     "build": "tsc",
     "dev": "nodemon --config nodemon.json src/app.ts"

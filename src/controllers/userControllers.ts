@@ -34,19 +34,15 @@ const register: RequestHandler = async (req, res) => {
       message: "Something went wrong while registering user ",
     });
   } else {
-
     const token = await jwt.sign(
       { _id: newUser._id },
       `${process.env.SECRET_KEY}`
     );
-   
     res.cookie("chatbox",token,{
       httpOnly:true,
-      secure:true,
-      maxAge:21* 24 * 60 * 60 * 1000,
-      sameSite:"none"
+      secure:false,
+      maxAge:21* 24 * 60 * 60 * 1000
     })
-
     res
       .status(200)
       .send({ success: true, message: "User registered successfully" });
@@ -75,19 +71,16 @@ const login: RequestHandler = async (req, res) => {
         { _id: isUserExists._id },
         `${process.env.SECRET_KEY}`
       );
-
       res.cookie("chatbox",token,{
         httpOnly:true,
-        secure:true,
-        maxAge:21* 24 * 60 * 60 * 1000,
-        sameSite:"none"
+        secure:false,
+        maxAge:21* 24 * 60 * 60 * 1000
       })
-
       res
         .status(200)
-        .send({ success: true, message: "User loggedin successfully" });
+        .send({ success: true, msg: "User loggedin successfully" });
     } else {
-      res.status(400).send({ success: false, message: "Invalid Credentials" });
+      res.status(400).send({ success: false, msg: "Invalid Credentials" });
     }
   } catch (err:any) {
     res.status(500).send({ success:false , message:err.message});
@@ -205,7 +198,7 @@ const getLoggedInUser: RequestHandler = async(req,res)=> {
 const logoutUser: RequestHandler = async(req,res)=> {
   try{
   res.clearCookie("chatbox")
-  res.status(200).send({success:true,message:"Logout successfully"})
+  res.status(200).send({success:true,msg:"Logout successfully"})
   }catch(err:any){
     res.status(500).send({ success:false , message:err.message});
   }

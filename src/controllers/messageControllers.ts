@@ -2,12 +2,14 @@ import { RequestHandler, Request } from "express";
 import Chat from "../models/chatModel";
 import Message from "../models/messageModel";
 import User from "../models/userMode";
+import { ObjectId } from "mongodb";
 
 interface Msg {
   sender: string;
   msgType: string;
   message: string;
   reactEmoji?: string;
+  messageId:string;
 }
 
 interface CustomReq extends Request {
@@ -24,11 +26,13 @@ const addMessage: RequestHandler = async (req, res) => {
       message,
       msgType,
       chatId,
+      messageId
     }: {
       secondUser: string;
       message: string;
       msgType: string;
       chatId: string;
+      messageId:string;
     } = req.body;
 
     let messageData: string;
@@ -49,9 +53,12 @@ const addMessage: RequestHandler = async (req, res) => {
       sender: getLoggedInUser._id.toString(),
       msgType: msgType,
       message: messageData,
+     messageId:messageId,
     });
 
     await newMessage.save();
+
+  await Message.updateOne({_id:newMessage._id},{$set:{messageKey:newMessage._id}})
 
     if (!chatId) {
       const createNewChat = new Chat({
@@ -157,7 +164,13 @@ const removeReaction: RequestHandler = async (req, res) => {
 const deleteMessage: RequestHandler = async (req, res) => {
   try {
     const { messageId } = req.body;
-    let removeMessage = await Message.deleteOne({ _id: messageId });
+  
+    let removeMessage = await Message.deleteOne({
+      $or: [
+        { messageId:messageId},
+        {messageKey:messageId}
+      ]
+    });    
     if (removeMessage.deletedCount === 1) {
       res.status(200).send({ success: true, message: "Message deleted" });
     } else {
@@ -167,6 +180,7 @@ const deleteMessage: RequestHandler = async (req, res) => {
       });
     }
   } catch (err:any) {
+    console.log(err)
     res.status(500).send({ success:false , message:err.message});
   }
 };

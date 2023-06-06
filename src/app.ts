@@ -10,7 +10,7 @@ import chatRoutes from "./routes/chatRoutes";
 import cookieParser from "cookie-parser";
 
 app.use(express.json());
-app.use(cors({ origin:true, credentials: true }));
+app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 app.use("/api", userRoutes);
 app.use("/api", messageRoutes);
@@ -22,7 +22,7 @@ let server = app.listen(process.env.PORT, () => {
 
 const io = require("socket.io")(server, {
   cors: {
-    origin: "https://realtime-chat-app-07.netlify.app",
+    origin: "https://647f91cb9a703400084c57b6--realtime-chat-app-07.netlify.app",
   },
 });
 
@@ -65,4 +65,9 @@ io.on("connection", (socket: any) => {
   socket.on("leave-group-active",(userId:any,chatId:any)=> {
     io.emit("leave-group",userId,chatId)
   })
+
+  socket.on("delete-message-active",(messageId:any,chatId:string)=> {
+    io.emit("delete-message",messageId,chatId)
+  })
+
 }); 

@@ -48,6 +48,7 @@ const fileUploadMiddleware: RequestHandler = async (req, res, next) => {
       }).single("message");
 
       fileUpload(req, res, async function (err: any) {
+        console.log(req.body)
        try{
         if (!req.file) {
           return res.status(400).send({
