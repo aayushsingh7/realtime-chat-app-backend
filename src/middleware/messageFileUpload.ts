@@ -39,12 +39,6 @@ const fileUploadMiddleware: RequestHandler = async (req, res, next) => {
     } else {
       const fileUpload = multer({
         storage: storage,
-        fileFilter: (req: Request, file: Express.Multer.File, cb: any) => {
-          if (!file.originalname.match(/\.(mp4|MPEG-4|png|jpg|jpeg|webp)$/)) {
-            return cb(new Error("Plz upload a valid file"));
-          }
-          cb(undefined, true);
-        },
       }).single("message");
 
       fileUpload(req, res, async function (err: any) {
