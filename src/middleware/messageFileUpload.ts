@@ -48,6 +48,7 @@ const fileUploadMiddleware: RequestHandler = async (req, res, next) => {
           return res.status(400).send({
             success: false,
             message: "Cannot Upload Image as it is undefined or not",
+            reqBody:req.body
           });
         }
 
