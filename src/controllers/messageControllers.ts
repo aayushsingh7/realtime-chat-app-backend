@@ -3,6 +3,7 @@ import Chat from "../models/chatModel";
 import Message from "../models/messageModel";
 import User from "../models/userMode";
 import { ObjectId } from "mongodb";
+import cloudinary from "../cloudinary";
 
 interface Msg {
   sender: string;
@@ -38,7 +39,11 @@ const addMessage: RequestHandler = async (req, res) => {
     let messageData: string;
 
     if (msgType === "image" || msgType === "video" || msgType === "gif") {
-      messageData = reqS.cloudinary_file_link;
+      // messageData = reqS.cloudinary_file_link;
+      let result = await cloudinary.uploader.upload(message,{
+        folder:"realtime-chat-app-file-messages"
+      })
+      messageData = result.secure_url
     } else {
       messageData = message;
     }
