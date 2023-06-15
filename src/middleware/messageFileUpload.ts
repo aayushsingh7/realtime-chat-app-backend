@@ -1,5 +1,4 @@
 import { RequestHandler, Request } from "express";
-
 import multer from "multer";
 import path from "path";
 import { randomInt } from "crypto";
@@ -18,7 +17,7 @@ cloudinary.v2.config({
 
 const storage = multer.diskStorage({
   destination: function (req: Request, file: Express.Multer.File, cb: any) {
-    cb(null, path.join(__dirname, "../uploads"));
+    cb(null,'../src/uploads');
   },
   filename: (req: Request, file: Express.Multer.File, cb: any) => {
     cb(
@@ -37,6 +36,7 @@ const fileUploadMiddleware: RequestHandler = async (req, res, next) => {
     if (req.headers["content-type"]?.includes("application/json")) {
       return next();
     } else {
+
       const fileUpload = multer({
         storage: storage,
       }).single("message");
@@ -48,7 +48,8 @@ const fileUploadMiddleware: RequestHandler = async (req, res, next) => {
           return res.status(400).send({
             success: false,
             message: "Cannot Upload Image as it is undefined or not",
-            reqBody:req.body
+            reqBody:req.body,
+            file:req.file,
           });
         }
 
