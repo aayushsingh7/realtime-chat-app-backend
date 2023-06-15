@@ -47,10 +47,12 @@ const addMessage: RequestHandler = async (req, res) => {
 
     if (msgType === "image" || msgType === "video" || msgType === "gif") {
       // messageData = reqS.cloudinary_file_link;
-      let result = await cloudinary.v2.uploader.upload(message,{
-        folder:"realtime-chat-app-file-messages"
+      let result = await cloudinary.v2.uploader.upload(message)
+      messageData = result.secure_url,
+      console.log({
+        result:result,
+        messageData:messageData
       })
-      messageData = result.secure_url
     } else {
       messageData = message;
     }
