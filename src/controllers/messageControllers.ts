@@ -3,7 +3,8 @@ import Chat from "../models/chatModel";
 import Message from "../models/messageModel";
 import User from "../models/userMode";
 import { ObjectId } from "mongodb";
-import cloudinary from "../cloudinary";
+import cloudinary from "cloudinary";
+
 
 interface Msg {
   sender: string;
@@ -21,6 +22,12 @@ interface CustomReq extends Request {
 const addMessage: RequestHandler = async (req, res) => {
   try {
     const reqS = req as CustomReq;
+
+    cloudinary.v2.config({
+      cloud_name: process.env.CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
 
     const {
       secondUser,
@@ -40,7 +47,7 @@ const addMessage: RequestHandler = async (req, res) => {
 
     if (msgType === "image" || msgType === "video" || msgType === "gif") {
       // messageData = reqS.cloudinary_file_link;
-      let result = await cloudinary.uploader.upload(message,{
+      let result = await cloudinary.v2.uploader.upload(message,{
         folder:"realtime-chat-app-file-messages"
       })
       messageData = result.secure_url
