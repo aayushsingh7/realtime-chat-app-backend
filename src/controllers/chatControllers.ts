@@ -519,6 +519,7 @@ const updateProfileInfo: RequestHandler = async (req, res) => {
     cloudinary.v2.config({
       cloud_name: process.env.CLOUD_NAME,
       api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
     });
 
     const { discription, slogan, name, chatType, id,isImgUpdated,image } = req.body;
