@@ -146,9 +146,18 @@ const getAllUserChats: RequestHandler = async (req, res) => {
 
 const createGroupChat: RequestHandler = async (req, res) => {
   try {
+
+    cloudinary.v2.config({
+      cloud_name: process.env.CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+
     const customReq = req as CustomReq;
 
-    const { users, groupName, discription } = req.body;
+    const { users, groupName, discription,image } = req.body;
+
+    const result  = await cloudinary.v2.uploader.upload(image)
 
     const getAdmin = await User.findOne({ _id: customReq.userId });
 
@@ -158,7 +167,7 @@ const createGroupChat: RequestHandler = async (req, res) => {
       users: JSON.parse(users),
       createdBy: customReq.userId,
       name: groupName,
-      image: customReq.cloudinary_file_link,
+      image:result.secure_url,
       discription: discription,
     });
 
