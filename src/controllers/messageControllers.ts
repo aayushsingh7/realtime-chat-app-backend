@@ -3,8 +3,7 @@ import Chat from "../models/chatModel";
 import Message from "../models/messageModel";
 import User from "../models/userMode";
 import { ObjectId } from "mongodb";
-import cloudinary from "cloudinary";
-
+import cloudinary from 'cloudinary'
 
 interface Msg {
   sender: string;
@@ -46,13 +45,8 @@ const addMessage: RequestHandler = async (req, res) => {
     let messageData: string;
 
     if (msgType === "image" || msgType === "video" || msgType === "gif") {
-      // messageData = reqS.cloudinary_file_link;
-      let result = await cloudinary.v2.uploader.upload(message)
-      messageData = result.secure_url,
-      console.log({
-        result:result,
-        messageData:messageData
-      })
+      const result = await cloudinary.v2.uploader.upload(message)
+      messageData = result.secure_url
     } else {
       messageData = message;
     }
@@ -135,6 +129,7 @@ const addMessage: RequestHandler = async (req, res) => {
       }
     }
   } catch (err: any) {
+    console.log(err)
     res.status(500).send({ success:false , message:err.message});
   }
 };
@@ -266,3 +261,19 @@ export default {
   deleteMessage,
   addEventAlertMessage,
 };
+
+
+// const messageData = {
+//   sender:JSON.stringify(getSecondUser(loggedInUser._id, chat)),
+//   msgType:msgType,
+//   chatId: chat._id,
+//   messageId:newMessage._id,
+//   message:data
+//  }
+
+//  const formData = new FormData(formRef.current);
+//  formData.append("sender",JSON.stringify(getSecondUser(loggedInUser._id, chat)));
+//  formData.append("msgType", msgType);
+//  formData.append("chatId", chat._id);
+//  formData.append("messageId",newMessage._id)
+//  formData.append("message",data)
