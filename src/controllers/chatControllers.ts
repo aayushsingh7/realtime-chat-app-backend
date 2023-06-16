@@ -2,6 +2,7 @@ import e, { RequestHandler, Request } from "express";
 import Chat from "../models/chatModel";
 import User from "../models/userMode";
 import Message from "../models/messageModel";
+import cloudinary from 'cloudinary'
 
 interface CustomReq extends Request {
   userId: string;
@@ -514,15 +515,24 @@ const leaveChat: RequestHandler = async (req, res) => {
 const updateProfileInfo: RequestHandler = async (req, res) => {
   try {
     let customReq = req as CustomReq;
-    const { discription, slogan, name, chatType, id } = req.body;
+
+    cloudinary.v2.config({
+      cloud_name: process.env.CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+    });
+
+    const { discription, slogan, name, chatType, id,isImgUpdated,image } = req.body;
     let newData;
 
+    
+
     if (chatType === "group") {
-      if (customReq.cloudinary_file_link !== undefined) {
+      if (isImgUpdated) {
+        let result = await cloudinary.v2.uploader.upload(image)
         newData = {
           discription: discription,
           name: name,
-          image: customReq.cloudinary_file_link,
+          image:result.secure_url,
         };
       } else {
         newData = {
@@ -567,12 +577,13 @@ const updateProfileInfo: RequestHandler = async (req, res) => {
         });
       }
     } else {
-      if (customReq.cloudinary_file_link !== undefined) {
+      if (isImgUpdated) {
+        let result = await cloudinary.v2.uploader.upload(image)
         newData = {
           discription: discription,
           name: name,
           slogan: slogan,
-          image: customReq.cloudinary_file_link,
+          image:result.secure_url,
         };
       } else {
         newData = {
