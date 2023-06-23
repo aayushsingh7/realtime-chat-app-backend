@@ -42,7 +42,7 @@ const register: RequestHandler = async (req, res) => {
       httpOnly:true,
       secure:true,
       maxAge:21* 24 * 60 * 60 * 1000,
-      sameSite:false,
+      sameSite:"none",
     })
     res
       .status(200)
@@ -76,7 +76,7 @@ const login: RequestHandler = async (req, res) => {
         httpOnly:true,
         secure:true,
         maxAge:21* 24 * 60 * 60 * 1000,
-        sameSite:false,
+        sameSite:"none",
       })
       res
         .status(200)
