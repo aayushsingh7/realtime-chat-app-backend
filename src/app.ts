@@ -22,7 +22,7 @@ let server = app.listen(process.env.PORT, () => {
 
 const io = require("socket.io")(server, {
   cors: {
-    origin: ["https://main--realtime-chat-app-07.netlify.app",
+    origin: ["https://main--realtime-chat-app-07.netlify.app",,"https://realtime-chat-app-07.netlify.app/chat",
     "https://6489fdb7ffbbca0008fbce8e--realtime-chat-app-07.netlify.app"],
   },
 });
