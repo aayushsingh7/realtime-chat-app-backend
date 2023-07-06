@@ -3,14 +3,14 @@ import Chat from "../models/chatModel";
 import Message from "../models/messageModel";
 import User from "../models/userMode";
 import { ObjectId } from "mongodb";
-import cloudinary from 'cloudinary'
+import cloudinary from "cloudinary";
 
 interface Msg {
   sender: string;
   msgType: string;
   message: string;
   reactEmoji?: string;
-  messageId:string;
+  messageId: string;
 }
 
 interface CustomReq extends Request {
@@ -33,20 +33,22 @@ const addMessage: RequestHandler = async (req, res) => {
       message,
       msgType,
       chatId,
-      messageId
+      messageId,
     }: {
       secondUser: string;
       message: string;
       msgType: string;
       chatId: string;
-      messageId:string;
+      messageId: string;
     } = req.body;
 
     let messageData: string;
 
     if (msgType === "image" || msgType === "video" || msgType === "gif") {
-      const result = await cloudinary.v2.uploader.upload(message)
-      messageData = result.secure_url
+      const result = await cloudinary.v2.uploader.upload(message, {
+        folder: "file messages",
+      });
+      messageData = result.secure_url;
     } else {
       messageData = message;
     }
@@ -61,76 +63,49 @@ const addMessage: RequestHandler = async (req, res) => {
       sender: getLoggedInUser._id.toString(),
       msgType: msgType,
       message: messageData,
-     messageId:messageId,
+      messageId: messageId,
     });
 
     await newMessage.save();
 
-  await Message.updateOne({_id:newMessage._id},{$set:{messageKey:newMessage._id}})
+    await Message.updateOne(
+      { _id: newMessage._id },
+      { $set: { messageKey: newMessage._id } }
+    );
 
-    if (!chatId) {
-      const createNewChat = new Chat({
-        isGroupChat: false,
-        admins: [],
-        users: [reqS.userId, secondUser],
-        latestMessage: newMessage._id,
-        messages: [newMessage._id],
-      });
+    const addMessageToChat = await Chat.updateOne(
+      { _id: chatId },
+      { $push: { messages: newMessage._id } }
+    );
 
-      await (
-        await (
-          await (await createNewChat.save()).populate("users")
-        ).populate("latestMessage")
-      ).populate({
-        path: "messages",
-        populate: {
-          path: "sender",
-          model: "user",
-          select: "_id image name email discription slogan",
-        },
-      });
+    const updateLatestMessage = await Chat.updateOne(
+      { _id: chatId },
+      { $set: { latestMessage: newMessage._id } }
+    );
 
-      res.status(201).send({
+    const removeDeletedChatUsers = await Chat.updateOne(
+      { _id: chatId },
+      { $set: { chatDeletedFor: [] } }
+    );
+
+    if (
+      addMessageToChat.modifiedCount === 1 &&
+      updateLatestMessage.modifiedCount === 1
+    ) {
+      res.status(200).send({
         success: true,
-        message: "New chat created",
-        newChat: createNewChat,
+        message: "New message added",
         newMessage: newMessage,
       });
     } else {
-
-      const addMessageToChat = await Chat.updateOne(
-        { _id: chatId },
-        { $push: { messages: newMessage._id } }
-      );
-
-      const updateLatestMessage = await Chat.updateOne(
-        { _id: chatId },
-        { $set: { latestMessage: newMessage._id } }
-      );
-
-      const removeDeletedChatUsers = await Chat.updateOne({_id:chatId},{$set:{chatDeletedFor:[]}})
-
-      if (
-        addMessageToChat.modifiedCount === 1 &&
-        updateLatestMessage.modifiedCount === 1
-      ) {
-        res
-          .status(200)
-          .send({
-            success: true,
-            message: "New message added",
-            newMessage: newMessage,
-          });
-      } else {
-        res.status(200).send({
-          success: true,
-          message: "Something went wrong, plz try again",
-        });
-      }
+      res.status(400).send({
+        success: true,
+        message: "Something went wrong, plz try again",
+      });
     }
   } catch (err: any) {
-    console.log(err)
-    res.status(500).send({ success:false , message:err.message});
+    console.log(err);
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
@@ -146,8 +121,8 @@ const addReaction: RequestHandler = async (req, res) => {
     } else {
       res.status(200).send({ success: false, message: "Something went wrong" });
     }
-  } catch (err:any) {
-    res.status(500).send({ success:false , message:err.message});
+  } catch (err: any) {
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
@@ -165,21 +140,18 @@ const removeReaction: RequestHandler = async (req, res) => {
     } else {
       res.status(200).send({ success: false, message: "Something went wrong" });
     }
-  } catch (err:any) {
-    res.status(500).send({ success:false , message:err.message});
+  } catch (err: any) {
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
 const deleteMessage: RequestHandler = async (req, res) => {
   try {
     const { messageId } = req.body;
-  
+
     let removeMessage = await Message.deleteOne({
-      $or: [
-        { messageId:messageId},
-        {messageKey:messageId}
-      ]
-    });    
+      $or: [{ messageId: messageId }, { messageKey: messageId }],
+    });
     if (removeMessage.deletedCount === 1) {
       res.status(200).send({ success: true, message: "Message deleted" });
     } else {
@@ -188,9 +160,9 @@ const deleteMessage: RequestHandler = async (req, res) => {
         message: "Something went wrong while deleting the message",
       });
     }
-  } catch (err:any) {
-    console.log(err)
-    res.status(500).send({ success:false , message:err.message});
+  } catch (err: any) {
+    console.log(err);
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
@@ -232,7 +204,7 @@ const addEventAlertMessage: RequestHandler = async (req, res) => {
         let updateUserRemovedDate = await Chat.updateOne(
           { _id: chatId, "removedUsers._id": moderator._id },
           { $set: { "removedUsers.$.createdAt": new Date().toISOString() } }
-        )
+        );
       }
     }
 
@@ -242,15 +214,13 @@ const addEventAlertMessage: RequestHandler = async (req, res) => {
     ) {
       res.status(200).send({ success: true, message: "Alert message added" });
     } else {
-      res
-        .status(400)
-        .send({
-          success: false,
-          message: "Something went wrong while adding alert message",
-        });
+      res.status(400).send({
+        success: false,
+        message: "Something went wrong while adding alert message",
+      });
     }
-  } catch (err:any) {
-    res.status(500).send({ success:false , message:err.message});
+  } catch (err: any) {
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
@@ -261,7 +231,6 @@ export default {
   deleteMessage,
   addEventAlertMessage,
 };
-
 
 // const messageData = {
 //   sender:JSON.stringify(getSecondUser(loggedInUser._id, chat)),
