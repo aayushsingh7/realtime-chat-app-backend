@@ -2,7 +2,7 @@ import e, { RequestHandler, Request } from "express";
 import Chat from "../models/chatModel";
 import User from "../models/userMode";
 import Message from "../models/messageModel";
-import cloudinary from 'cloudinary'
+import cloudinary from "cloudinary";
 
 interface CustomReq extends Request {
   userId: string;
@@ -48,7 +48,7 @@ const getSingleChat: RequestHandler = async (req, res) => {
       message: "Chat fetched successfully",
       chat: getChat,
     });
-  } catch (err:any) {
+  } catch (err: any) {
     res.status(500).send(err);
   }
 };
@@ -60,7 +60,7 @@ const getSingelChatWithUsers: RequestHandler = async (req, res) => {
     const getChat = await Chat.findOne({
       users: { $all: [userOne, userTwo] },
       isGroupChat: false,
-    })    
+    })
       .populate({
         path: "users",
         select: "_id image name email discription slogan createdAt",
@@ -89,13 +89,52 @@ const getSingelChatWithUsers: RequestHandler = async (req, res) => {
         chat: getChat,
       });
     } else {
-      res.status(404).send({
-        success: false,
-        message: "Chat not found!",
-        chat: {},
+      let createNewChat = new Chat({
+        isGroupChat: false,
+        admins: [],
+        users: [userOne, userTwo],
+        messages: [],
       });
+
+      await createNewChat.save()
+      
+      const getNewChat = await Chat.findOne({_id:createNewChat._id}).populate({
+        path: "users",
+        select: "_id image name email discription slogan createdAt",
+      })
+      .populate({
+        path: "messages",
+        populate: {
+          path: "sender",
+          model: "user",
+          select: "_id image name email discription slogan createdAt",
+        },
+      })
+      .populate({
+        path: "latestMessage",
+        populate: {
+          path: "sender",
+          model: "user",
+          select: "_id image name email discription slogan createdAt",
+        },
+      });
+
+      if (createNewChat._id) {
+        res.status(201).send({
+          success: true,
+          message: "New chat created",
+          chat: getNewChat,
+        });
+        
+      } else {
+        res.status(404).send({
+          success: false,
+          message: "Chat not found!",
+          chat: {},
+        });
+      }
     }
-  } catch (err:any) {
+  } catch (err: any) {
     res.status(500).send(err);
   }
 };
@@ -128,25 +167,26 @@ const getAllUserChats: RequestHandler = async (req, res) => {
       })
       .sort({ updatedAt: -1 });
 
+    const filterEmptyChats = getChats.filter((chat)=> chat.messages.length > 0)
+
     if (getChats.length > 0) {
       res.status(200).send({
         success: true,
         message: "Chats fetched successfully",
-        data: getChats,
+        data: filterEmptyChats,
       });
     } else {
       res
         .status(404)
         .send({ success: false, message: "No Chats Found", data: [] });
     }
-  } catch (err:any) {
+  } catch (err: any) {
     res.status(500).send(err);
   }
 };
 
 const createGroupChat: RequestHandler = async (req, res) => {
   try {
-
     cloudinary.v2.config({
       cloud_name: process.env.CLOUD_NAME,
       api_key: process.env.CLOUDINARY_API_KEY,
@@ -155,9 +195,9 @@ const createGroupChat: RequestHandler = async (req, res) => {
 
     const customReq = req as CustomReq;
 
-    const { users, groupName, discription,image } = req.body;
+    const { users, groupName, discription, image } = req.body;
 
-    const result  = await cloudinary.v2.uploader.upload(image)
+    const result = await cloudinary.v2.uploader.upload(image);
 
     const getAdmin = await User.findOne({ _id: customReq.userId });
 
@@ -167,7 +207,7 @@ const createGroupChat: RequestHandler = async (req, res) => {
       users: JSON.parse(users),
       createdBy: customReq.userId,
       name: groupName,
-      image:result.secure_url,
+      image: result.secure_url,
       discription: discription,
     });
 
@@ -209,7 +249,7 @@ const createGroupChat: RequestHandler = async (req, res) => {
         message: "Something went wrong while create new group chat",
       });
     }
-  } catch (err:any) {
+  } catch (err: any) {
     res.status(500).send(err);
   }
 };
@@ -244,8 +284,8 @@ const addAdmin: RequestHandler = async (req, res) => {
         user: addedAdmin,
       });
     }
-  } catch (err:any) {
-   res.status(500).send({ success:false , message:err.message});
+  } catch (err: any) {
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
@@ -286,8 +326,8 @@ const removeAdmin: RequestHandler = async (req, res) => {
         user: removedAdmin,
       });
     }
-  } catch (err:any) {
-   res.status(500).send({ success:false , message:err.message});
+  } catch (err: any) {
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
@@ -337,8 +377,8 @@ const deleteChat: RequestHandler = async (req, res) => {
     res
       .status(200)
       .send({ success: true, message: "Chat deleted successfully" });
-  } catch (err:any) {
-   res.status(500).send({ success:false , message:err.message});
+  } catch (err: any) {
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
@@ -383,8 +423,8 @@ const addUser: RequestHandler = async (req, res) => {
       moderator: addedBy,
       user: addedUser,
     });
-  } catch (err:any) {
-   res.status(500).send({ success:false , message:err.message});
+  } catch (err: any) {
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
@@ -436,8 +476,8 @@ const removeUser: RequestHandler = async (req, res) => {
         message: "Something went wrong while removing the user",
       });
     }
-  } catch (err:any) {
-   res.status(500).send({ success:false , message:err.message});
+  } catch (err: any) {
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
@@ -469,8 +509,8 @@ const clearChat: RequestHandler = async (req, res) => {
     res
       .status(200)
       .send({ success: true, message: "Chat cleared successfully" });
-  } catch (err:any) {
-   res.status(500).send({ success:false , message:err.message});
+  } catch (err: any) {
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
@@ -516,8 +556,8 @@ const leaveChat: RequestHandler = async (req, res) => {
         message: "Something went wrong while removing the user",
       });
     }
-  } catch (err:any) {
-   res.status(500).send({ success:false , message:err.message});
+  } catch (err: any) {
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
@@ -531,18 +571,17 @@ const updateProfileInfo: RequestHandler = async (req, res) => {
       api_secret: process.env.CLOUDINARY_API_SECRET,
     });
 
-    const { discription, slogan, name, chatType, id,isImgUpdated,image } = req.body;
+    const { discription, slogan, name, chatType, id, isImgUpdated, image } =
+      req.body;
     let newData;
-
-    
 
     if (chatType === "group") {
       if (isImgUpdated) {
-        let result = await cloudinary.v2.uploader.upload(image)
+        let result = await cloudinary.v2.uploader.upload(image);
         newData = {
           discription: discription,
           name: name,
-          image:result.secure_url,
+          image: result.secure_url,
         };
       } else {
         newData = {
@@ -588,12 +627,12 @@ const updateProfileInfo: RequestHandler = async (req, res) => {
       }
     } else {
       if (isImgUpdated) {
-        let result = await cloudinary.v2.uploader.upload(image)
+        let result = await cloudinary.v2.uploader.upload(image);
         newData = {
           discription: discription,
           name: name,
           slogan: slogan,
-          image:result.secure_url,
+          image: result.secure_url,
         };
       } else {
         newData = {
@@ -622,11 +661,10 @@ const updateProfileInfo: RequestHandler = async (req, res) => {
         });
       }
     }
-  } catch (err:any) {
-   res.status(500).send({ success:false , message:err.message});
+  } catch (err: any) {
+    res.status(500).send({ success: false, message: err.message });
   }
 };
-
 
 export default {
   getAllUserChats,
