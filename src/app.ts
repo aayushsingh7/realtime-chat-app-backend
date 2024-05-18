@@ -5,11 +5,20 @@ import dotenv from "dotenv";
 dotenv.config();
 import "./database/dbConnect";
 import userRoutes from "./routes/userRoutes";
+import cloudinary from "cloudinary";
 import messageRoutes from "./routes/messageRoutes";
 import chatRoutes from "./routes/chatRoutes";
 import cookieParser from "cookie-parser";
+import { ChatType, MessageType, UserType } from "./types/types";
+import User from "./models/userMode";
 
-app.use(express.json({ limit: '10mb' }));
+cloudinary.v2.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+app.use(express.json({ limit: "10mb" }));
 app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 app.use("/api", userRoutes);
@@ -22,53 +31,212 @@ let server = app.listen(process.env.PORT, () => {
 
 const io = require("socket.io")(server, {
   cors: {
-    origin: ["https://main--realtime-chat-app-07.netlify.app",,"https://realtime-chat-app-07.netlify.app",
-    "https://6489fdb7ffbbca0008fbce8e--realtime-chat-app-07.netlify.app"],
+    origin: [
+      "https://main--realtime-chat-app-07.netlify.app",
+      "http://localhost:5173",
+      "https://realtime-chat-app-07.netlify.app",
+      "https://6489fdb7ffbbca0008fbce8e--realtime-chat-app-07.netlify.app",
+    ],
   },
 });
 
 io.on("connection", (socket: any) => {
-  socket.on("newMessage", (newMessage: any, chatId: string) => {
-    io.emit("message", newMessage, chatId);
+  socket.on("setup", (userData: UserType) => {
+    const userId = userData._id;
+    socket.join(userId);
   });
 
-  socket.on("newChatCreated", (newChat: any) => {
-    io.emit("newChat", newChat);
+  socket.on("new message", (newMessage: MessageType, chat: any) => {
+    if (!chat || !chat.users) return;
+    chat.users.forEach((user: UserType) => {
+      console.log("new messsage received");
+      if (user._id === newMessage.sender._id) return;
+      io.in(user._id).emit("new message received", newMessage, chat);
+    });
   });
 
   socket.on(
-    "updateFileLink",
-    (messageId: any, newMessage: any, chatId: any) => {
-      io.emit("updateFile", messageId, newMessage.message, chatId);
+    "react on message",
+    (user: UserType, message: MessageType, emoji: string, chat: any) => {
+      if (!chat && !chat.users) return console.log("Invalid chat");
+      chat.users.forEach((u: any) => {
+        io.in(u._id).emit(
+          "react on message received",
+          user,
+          message,
+          emoji,
+          chat
+        );
+      });
     }
   );
 
-  socket.on("remove-from-group-active", (chatId: any, userId: any) => {
-    io.emit("remove-from-group", chatId, userId);
+  socket.on(
+    "remove reaction on message",
+    (user: UserType, message: MessageType, emoji: string, chat: any) => {
+      if (!chat && !chat.users) return console.log("Invalid chat");
+      chat.users.forEach((u: any) => {
+        io.in(u._id).emit(
+          "remove reaction",
+          user._id,
+          message._id,
+          emoji,
+          chat
+        );
+      });
+    }
+  );
+
+  socket.on(
+    "delete message",
+    (userId: string, messageIds: string[], chat: any) => {
+      if (!chat && !chat.users) return console.log("Invalid chat");
+      chat.users.forEach((user: any) => {
+        io.in(user._id).emit(
+          "delete message triggered",
+          userId,
+          messageIds,
+          chat
+        );
+      });
+    }
+  );
+
+  socket.on("create new chat", (newChat: any) => {
+    if (!newChat) return;
+    newChat.users.forEach((user: UserType) => {
+      io.in(user._id).emit("create new chat triggered", newChat);
+    });
   });
 
-  socket.on("add-to-group-active", (chatId:any , userData: any) => {
-    io.emit("add-to-group",chatId, userData);
+  socket.on("add user", (userData: UserType, newChat: ChatType, chat: any) => {
+    if (!chat && !chat.users) return console.log("Invalid Chat");
+    const updatedChat = {
+      ...chat,
+      users: [...chat.users, userData],
+    };
+    updatedChat.users.forEach((user: UserType) => {
+      io.in(user._id).emit("user joined", userData, newChat, chat);
+    });
   });
 
-  socket.on("chat-alert-message", (alertMessage: any, chatId: any) => {
-    io.emit("alert-message", alertMessage, chatId);
+  socket.on("remove user", (userData: UserType, chat: any, method: string) => {
+    if (!chat && !chat.users) return console.log("Invalid Chat");
+    const updatedChat = {
+      ...chat,
+      users: [...chat.users, userData],
+    };
+    updatedChat.users.forEach((user: UserType) => {
+      io.in(user._id).emit("user removed", userData, chat, method);
+    });
   });
 
-  socket.on("add-admin-active", (userId: string, chatId: string) => {
-    io.emit("add-admin", userId, chatId);
+  socket.on(
+    "edit group details",
+    (userData: UserType, newData: ChatType, chat: any) => {
+      if (!chat && !chat.users) return console.log("Invalid Chat");
+      chat.users.forEach((user: UserType) => {
+        io.in(user._id).emit("group details edited", userData, newData, chat);
+      });
+    }
+  );
+
+  socket.on(
+    "promote to admin",
+    (promoterUserId: string, promotedUserId: string, chat: any) => {
+      console.log("add to admin has been triggered", chat);
+      if (!chat && !chat.users) return console.log("Invalid Chat");
+      chat.users.forEach((user: UserType) => {
+        io.in(user._id).emit(
+          "promoted to admin",
+          promoterUserId,
+          promotedUserId,
+          chat
+        );
+      });
+    }
+  );
+
+  socket.on(
+    "remove from admin",
+    (removerUserId: string, removedUserId: string, chat: any) => {
+      console.log("remove from admin has been triggered", chat);
+      if (!chat && !chat.users) return console.log("Invalid Chat");
+      chat.users.forEach((user: UserType) => {
+        io.in(user._id).emit(
+          "removed from admin",
+          removerUserId,
+          removedUserId,
+          chat
+        );
+      });
+    }
+  );
+
+  socket.on("message seen", (messageIds: string[], chat: any, u: UserType) => {
+    if (!chat && !chat.users) return console.log("Invalid chat");
+    chat.users.forEach((user: UserType) => {
+      // if (user._id === u._id) return;
+      io.in(user._id).emit("message seen received", messageIds, chat, u);
+    });
   });
 
-  socket.on("remove-admin-active", (userId: string, chatId: string) => {
-    io.emit("remove-admin", userId, chatId);
+  socket.on("typing started", (typingUser: UserType, chat: any) => {
+    if (!chat && !chat.users) return console.log("Invalid chat");
+    console.log(typingUser);
+    chat.users.forEach((user: UserType) => {
+      if (user._id === typingUser._id) return;
+      io.in(user._id).emit("typing", typingUser, chat);
+    });
   });
 
-  socket.on("leave-group-active",(userId:any,chatId:any)=> {
-    io.emit("leave-group",userId,chatId)
-  })
+  socket.on("stop typing", (typingUser: UserType, chat: any) => {
+    if (!chat && !chat.users) return console.log("Invalid chat");
+    chat.users.forEach((user: UserType) => {
+      if (user._id === typingUser._id) return;
+      io.in(user._id).emit("typing stopped", typingUser, chat);
+    });
+  });
 
-  socket.on("delete-message-active",(messageId:any,chatId:string)=> {
-    io.emit("delete-message",messageId,chatId)
-  })
+  socket.on(
+    "change theme",
+    (theme: any, chat: any, alertMessage: MessageType) => {
+      if (!chat && !chat.users) return console.log("Invalid Chat");
+      chat.users.map((user: UserType) => {
+        io.in(user._id).emit("theme changed", theme, chat, alertMessage);
+      });
+    }
+  );
 
-}); 
+  socket.on(
+    "block user",
+    (userId: string, blockedUserId: string, chat: any) => {
+      console.log("block user");
+      if (!chat && !chat.users) return console.log("Invalid Chat");
+      chat.users.map((user: UserType) => {
+        console.log(user);
+        io.in(user._id).emit("user blocked", userId, blockedUserId, chat);
+      });
+    }
+  );
+
+  socket.on(
+    "unBlock user",
+    (userId: string, blockedUserId: string, chat: any) => {
+      console.log("unBlock user");
+      if (!chat && !chat.users) return console.log("Invalid Chat");
+      chat.users.map((user: UserType) => {
+        console.log(user);
+        io.in(user._id).emit("user unBlocked", userId, blockedUserId, chat);
+      });
+    }
+  );
+
+  socket.on("disconnect", async () => {
+    const userId = socket.handshake.auth.token;
+    await User.findOneAndUpdate(
+      { _id: userId },
+      { $set: { lastSeen: new Date().toISOString() } }
+    );
+  });
+});

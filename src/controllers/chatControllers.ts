@@ -1,59 +1,110 @@
 import e, { RequestHandler, Request } from "express";
 import Chat from "../models/chatModel";
 import User from "../models/userMode";
-import Message from "../models/messageModel";
 import cloudinary from "cloudinary";
-
-interface CustomReq extends Request {
-  userId: string;
-  cloudinary_file_link: string;
-}
-
-interface GroupChat {
-  isGroupChat: boolean;
-  admins: string[];
-  users: string[];
-  createdBy: string;
-  name: string;
-}
+import Message from "../models/messageModel";
+import mongoose, { model } from "mongoose";
 
 const getSingleChat: RequestHandler = async (req, res) => {
   try {
-    const { chatId } = req.query as { chatId: string };
+    const { chatId, userOne, userTwo } = req.query as {
+      chatId: string;
+      userOne: string;
+      userTwo: string;
+    };
+    let chat: any;
 
-    const getChat = await Chat.findOne({ _id: chatId })
-      .populate({
-        path: "users",
-        select: "_id image name email discription slogan createdAt",
-      })
-      .populate({
-        path: "messages",
-        populate: {
-          path: "sender",
-          model: "user",
-          select: "_id image name email discription slogan createdAt",
-        },
-      })
-      .populate({
-        path: "latestMessage",
-        populate: {
-          path: "sender",
-          model: "user",
-          select: "_id image name email discription slogan createdAt",
-        },
+    if (userOne && userTwo) {
+      const isChatAlreadyExists = await Chat.findOne({
+        users: { $all: [userOne, userTwo], $size: 2 },
+        isGroupChat: false,
       });
+
+      if (isChatAlreadyExists?._id) {
+        chat = isChatAlreadyExists;
+      } else {
+        const newChat = new Chat({
+          isGroupChat: false,
+          admins: [],
+          users: [userOne, userTwo],
+          messages: [],
+        });
+        await newChat.save();
+        chat = newChat;
+      }
+    }
+
+    if (chatId) {
+      chat = await Chat.findOne({ _id: chatId });
+    }
+
+    if (chat) {
+      await chat
+        // @ts-ignore
+        .populate([
+          {
+            path: "users",
+            model: "user",
+            select:
+              "_id image name username email slogan createdAt blockedUsers lastSeen",
+          },
+          {
+            path: "latestMessage",
+            model: "message",
+            select: "_id sender seenBy",
+          },
+          {
+            path: "messages",
+            options: { limit: 25, sort: { createdAt: -1 } },
+            populate: [
+              {
+                path: "reactEmoji",
+                populate: {
+                  path: "user",
+                  model: "user",
+                  select: "_id image name email",
+                },
+              },
+              {
+                path: "seenBy",
+                model: "user",
+                select: "_id username",
+              },
+              {
+                path: "sender",
+                model: "user",
+                select: "_id image name username",
+              },
+              {
+                path: "repliedTo",
+                model: "message", // Assuming "message" is the model name for messages
+                select: "_id message fileName msgType sender",
+                populate: {
+                  path: "sender",
+                  model: "user",
+                  select: "name",
+                },
+              },
+            ],
+          },
+        ]);
+    }
+
+    const totalMessages = await Message.countDocuments({ chat: chatId });
 
     res.status(200).send({
       success: true,
       message: "Chat fetched successfully",
-      chat: getChat,
+      chat: chat,
+      totalMessagesCount: totalMessages,
+      isMore: totalMessages > 25,
     });
   } catch (err: any) {
     res.status(500).send(err);
   }
 };
 
-const getSingelChatWithUsers: RequestHandler = async (req, res) => {
+const isChatExists: RequestHandler = async (req, res) => {
   try {
     const { userOne, userTwo } = req.query;
 
@@ -63,15 +114,28 @@ const getSingelChatWithUsers: RequestHandler = async (req, res) => {
     })
       .populate({
         path: "users",
-        select: "_id image name email discription slogan createdAt",
+        select: "_id image name email username discription slogan createdAt",
       })
       .populate({
         path: "messages",
-        populate: {
-          path: "sender",
-          model: "user",
-          select: "_id image name email discription slogan createdAt",
-        },
+        options: { limit: 25, sort: { createdAt: -1 } },
+        populate: [
+          {
+            path: "sender",
+            model: "user",
+            select: "_id image name email description slogan createdAt",
+          },
+          {
+            path: "repliedTo",
+            model: "message", // Assuming "message" is the model name for messages
+            select: "_id message fileName msgType sender",
+            populate: {
+              path: "sender",
+              model: "user",
+              select: "name",
+            },
+          },
+        ],
       })
       .populate({
         path: "latestMessage",
@@ -96,28 +160,29 @@ const getSingelChatWithUsers: RequestHandler = async (req, res) => {
         messages: [],
       });
 
-      await createNewChat.save()
-      
-      const getNewChat = await Chat.findOne({_id:createNewChat._id}).populate({
-        path: "users",
-        select: "_id image name email discription slogan createdAt",
-      })
-      .populate({
-        path: "messages",
-        populate: {
-          path: "sender",
-          model: "user",
-          select: "_id image name email discription slogan createdAt",
-        },
-      })
-      .populate({
-        path: "latestMessage",
-        populate: {
-          path: "sender",
-          model: "user",
-          select: "_id image name email discription slogan createdAt",
-        },
-      });
+      await createNewChat.save();
+
+      const getNewChat = await Chat.findOne({ _id: createNewChat._id })
+        .populate({
+          path: "users",
+          select: "_id image name email discription slogan createdAt username",
+        })
+        .populate({
+          path: "messages",
+          populate: {
+            path: "sender",
+            model: "user",
+            select: "_id image name email discription slogan createdAt",
+          },
+        })
+        .populate({
+          path: "latestMessage",
+          populate: {
+            path: "sender",
+            model: "user",
+            select: "_id image name email discription slogan createdAt",
+          },
+        });
 
       if (createNewChat._id) {
         res.status(201).send({
@@ -125,7 +190,6 @@ const getSingelChatWithUsers: RequestHandler = async (req, res) => {
           message: "New chat created",
           chat: getNewChat,
         });
-        
       } else {
         res.status(404).send({
           success: false,
@@ -141,44 +205,65 @@ const getSingelChatWithUsers: RequestHandler = async (req, res) => {
 
 const getAllUserChats: RequestHandler = async (req, res) => {
   try {
-    const customReq = req as CustomReq;
-    const getChats = await Chat.find({ users: { $in: customReq.userId } })
+    const userId = req.body.userId;
+
+    const getChats = await Chat.find({
+      $and: [
+        {
+          $or: [{ users: { $in: userId } }, { "removedUsers._id": userId }],
+        },
+      ],
+    })
       .populate({
         path: "users",
-        select: "_id image name email discription slogan createdAt",
+        model: "user",
+        select: "_id name image username blockedUsers",
       })
       .populate({
-        path: "messages",
+        path: "latestMessage",
+        model: "message",
         populate: [
           {
             path: "sender",
             model: "user",
-            select: "_id image name email discription slogan createdAt",
+            select: "_id image username name email",
+          },
+          {
+            path: "seenBy",
+            model: "user",
+            select: "_id username",
           },
         ],
       })
       .populate({
-        path: "latestMessage",
-        populate: {
-          path: "sender",
-          model: "user",
-          select: "_id image name email discription slogan createdAt",
-        },
+        path: "messages",
+        model: "message",
+        select: "_id seenBy deletedFor ",
+        populate: { path: "seenBy", select: "_id username", model: "user" },
       })
-      .sort({ updatedAt: -1 });
+      .select("-chatClearedFor -__v -chatDeleteFor")
+      .sort({ updatedAt: -1 })
+      .limit(15);
 
-    const filterEmptyChats = getChats.filter((chat)=> chat.messages.length > 0)
+    const totalDocuments = await Chat.countDocuments({
+      $and: [
+        {
+          $or: [{ users: { $in: userId } }, { "removedUsers._id": userId }],
+        },
+      ],
+    });
 
     if (getChats.length > 0) {
       res.status(200).send({
         success: true,
         message: "Chats fetched successfully",
-        data: filterEmptyChats,
+        chats: getChats,
+        isMore: totalDocuments > 15,
       });
     } else {
       res
         .status(404)
-        .send({ success: false, message: "No Chats Found", data: [] });
+        .send({ success: false, message: "No Chats Found", chats: [] });
     }
   } catch (err: any) {
     res.status(500).send(err);
@@ -187,68 +272,71 @@ const getAllUserChats: RequestHandler = async (req, res) => {
 
 const createGroupChat: RequestHandler = async (req, res) => {
   try {
-    cloudinary.v2.config({
-      cloud_name: process.env.CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    });
+    const { users, groupName, description, image, moderator, userId } =
+      req.body;
 
-    const customReq = req as CustomReq;
-
-    const { users, groupName, discription, image } = req.body;
-
-    const result = await cloudinary.v2.uploader.upload(image);
-
-    const getAdmin = await User.findOne({ _id: customReq.userId });
-
-    const newGroupChat = new Chat({
-      isGroupChat: true,
-      admins: [customReq.userId], // the user who created the group will be default admin
-      users: JSON.parse(users),
-      createdBy: customReq.userId,
-      name: groupName,
-      image: result.secure_url,
-      discription: discription,
-    });
-
-    await (
-      await (
-        await (await newGroupChat.save()).populate("users")
-      ).populate({
-        path: "messages",
-        populate: {
-          path: "sender",
-          model: "user",
-          select: "_id image name email discription slogan",
-        },
-      })
-    ).populate({
-      path: "latestMessage",
-      populate: {
-        path: "sender",
-        model: "user",
-        select: "_id image name email discription slogan",
+    const result = await cloudinary.v2.uploader.upload(image, {
+      folder: "Chat-app/Profile-pic",
+      format: "webp",
+      transformation: {
+        quality: 80,
+        fetch_format: "webp",
       },
     });
 
-    if (newGroupChat._id) {
-      res.status(200).send({
-        success: false,
-        message: "New group chat created successfully",
-        newChat: newGroupChat,
-        groupName: {
-          _id: newGroupChat._id,
-          name: groupName,
-        },
-        createdBy: getAdmin,
-        chatMsg: "created group",
-      });
-    } else {
-      res.status(400).send({
-        success: false,
-        message: "Something went wrong while create new group chat",
-      });
-    }
+    const newGroupChat = new Chat({
+      isGroupChat: true,
+      admins: [userId],
+      users: JSON.parse(users),
+      createdBy: userId,
+      name: groupName,
+      image: result.secure_url,
+      description: description,
+    });
+
+    await newGroupChat.save();
+
+    const addAlertMessage = new Message({
+      sender: process.env.MSG_BOT_ID,
+      msgType: "alert",
+      message: `created chat "${groupName}"`,
+      moderator: moderator,
+      user: null,
+    });
+
+    await addAlertMessage.save();
+
+    await newGroupChat.updateOne({
+      $push: { messages: addAlertMessage._id },
+      $set: { latestMessage: addAlertMessage._id },
+    });
+
+    const chat = await Chat.findOne({ _id: newGroupChat._id })
+      .populate({
+        path: "users",
+        model: "user",
+        select: "_id name image username",
+      })
+      .populate("latestMessage")
+      .populate({
+        path: "messages",
+        model: "message",
+        select: "_id seenBy deletedFor ",
+        populate: { path: "seenBy", select: "_id username", model: "user" },
+      })
+      .select("-removedUsers -__v");
+
+    res.status(201).send({
+      success: false,
+      message: "New group chat created successfully",
+      newChat: chat,
+      groupInfo: {
+        _id: newGroupChat._id,
+        name: groupName,
+      },
+      createdBy: moderator,
+      chatMsg: "created group",
+    });
   } catch (err: any) {
     res.status(500).send(err);
   }
@@ -256,8 +344,7 @@ const createGroupChat: RequestHandler = async (req, res) => {
 
 const addAdmin: RequestHandler = async (req, res) => {
   try {
-    const customReq = req as CustomReq;
-    const { adminId, chatId } = req.body;
+    const { adminId, chatId, userId } = req.body;
 
     const findChat = await Chat.findOne({ _id: chatId });
     if (!findChat) {
@@ -268,20 +355,10 @@ const addAdmin: RequestHandler = async (req, res) => {
       $push: { admins: adminId },
     });
 
-    const addedAdmin = await User.findOne({ _id: adminId }).select(
-      "_id name email"
-    );
-    const addedAdminBy = await User.findOne({ _id: customReq.userId }).select(
-      "_id name email"
-    );
-
     if (addAdmin.modifiedCount === 1) {
       res.status(200).send({
         success: true,
         message: "New admin added successfully",
-        chatMsg: `${addedAdminBy?.name} added ${addedAdmin?.name}`,
-        moderator: addedAdminBy,
-        user: addedAdmin,
       });
     }
   } catch (err: any) {
@@ -291,8 +368,7 @@ const addAdmin: RequestHandler = async (req, res) => {
 
 const removeAdmin: RequestHandler = async (req, res) => {
   try {
-    const customReq = req as CustomReq;
-    const { adminId, chatId } = req.body;
+    const { adminId, chatId, userId } = req.body;
 
     const findChat = await Chat.findOne({ _id: chatId });
     if (!findChat) {
@@ -310,20 +386,11 @@ const removeAdmin: RequestHandler = async (req, res) => {
       $pull: { admins: adminId },
     });
 
-    const removedAdmin = await User.findOne({ _id: adminId }).select(
-      "_id name email"
-    );
-    const removedAdminBy = await User.findOne({ _id: customReq.userId }).select(
-      "_id name email"
-    );
-
     if (removeAdmin.modifiedCount === 1) {
       res.status(200).send({
         success: true,
         message: "admin removed successfully",
         chatMsg: `removed`,
-        moderator: removedAdminBy,
-        user: removedAdmin,
       });
     }
   } catch (err: any) {
@@ -384,44 +451,59 @@ const deleteChat: RequestHandler = async (req, res) => {
 
 const addUser: RequestHandler = async (req, res) => {
   try {
-    const customReq = req as CustomReq;
     let updateChat;
-    const { userId, chatId } = req.body;
+    const { newUserId, chatId } = req.body;
 
-    const isUserAlreadyUser = await Chat.find({ _id: chatId, users: userId });
-
-    if (isUserAlreadyUser.length === 0) {
-      updateChat = await Chat.updateOne(
-        { _id: chatId },
-        { $push: { users: userId } }
-      );
-    }
-
-    const isUserInRemoved = await Chat.findOne({
+    const isUserAlreadyUser = await Chat.find({
       _id: chatId,
-      "removedUsers._id": userId,
+      users: newUserId,
     });
 
-    if (isUserInRemoved) {
-      let removeUser = await Chat.updateOne(
-        { _id: chatId, "removedUsers._id": userId },
-        { $pull: { removedUsers: { _id: userId } } }
-      );
+    if (isUserAlreadyUser.length === 0) {
+      updateChat = await Chat.findOneAndUpdate(
+        { _id: chatId },
+        {
+          $push: { users: newUserId },
+          $pull: { removedUsers: { _id: newUserId } },
+        },
+        { new: true }
+      )
+        .populate({
+          path: "users",
+          model: "user",
+          select: "_id name image username blockedUsers",
+        })
+        .populate({
+          path: "latestMessage",
+          model: "message",
+          populate: [
+            {
+              path: "sender",
+              model: "user",
+              select: "_id image username name email",
+            },
+            {
+              path: "seenBy",
+              model: "user",
+              select: "_id username",
+            },
+          ],
+        })
+        .populate({
+          path: "messages",
+          model: "message",
+          select: "_id seenBy deletedFor ",
+          populate: { path: "seenBy", select: "_id username", model: "user" },
+        })
+        .select("-removedUsers -__v")
+        .sort({ updatedAt: -1 });
     }
-
-    const addedUser = await User.findOne({ _id: userId }).select(
-      "_id name email"
-    );
-    const addedBy = await User.findOne({ _id: customReq.userId }).select(
-      "_id name email"
-    );
 
     res.status(200).send({
       success: true,
       message: "User added",
-      chatMsg: `added`,
-      moderator: addedBy,
-      user: addedUser,
+
+      newChat: updateChat,
     });
   } catch (err: any) {
     res.status(500).send({ success: false, message: err.message });
@@ -430,45 +512,29 @@ const addUser: RequestHandler = async (req, res) => {
 
 const removeUser: RequestHandler = async (req, res) => {
   try {
-    const customReq = req as CustomReq;
-
-    const { userId, chatId } = req.body;
-
-    const removedUser = await User.findOne({ _id: userId }).select(
-      "_id name email createdAt"
-    );
-    const removedBy = await User.findOne({ _id: customReq.userId }).select(
-      "_id name email createdAt"
-    );
+    const { newUserId, chatId } = req.body;
 
     const addUser = {
-      _id: userId,
+      _id: newUserId,
       createdAt: new Date().toISOString(),
     };
 
     const addToRemoved = await Chat.updateOne(
       { _id: chatId },
-      { $push: { removedUsers: addUser } }
+      {
+        $push: { removedUsers: addUser },
+        $pull: {
+          admins: newUserId,
+          users: newUserId,
+        },
+      }
     );
-
-    const isRemovedUserAdmin = await Chat.findOne({
-      _id: chatId,
-      admins: userId,
-    });
-
-    if (isRemovedUserAdmin) {
-      await isRemovedUserAdmin.updateOne({ $pull: { admins: userId } });
-    }
 
     if (addToRemoved.modifiedCount === 1) {
       res.status(200).json({
         success: true,
         message: "User removed",
         chatMsg: `removed`,
-        data: {
-          moderator: removedBy,
-          user: removedUser,
-        },
       });
     } else {
       res.status(400).send({
@@ -516,8 +582,6 @@ const clearChat: RequestHandler = async (req, res) => {
 
 const leaveChat: RequestHandler = async (req, res) => {
   try {
-    const customReq = req as CustomReq;
-
     const { userId, chatId } = req.body;
 
     const addUser = {
@@ -563,25 +627,15 @@ const leaveChat: RequestHandler = async (req, res) => {
 
 const updateProfileInfo: RequestHandler = async (req, res) => {
   try {
-    let customReq = req as CustomReq;
-
-    cloudinary.v2.config({
-      cloud_name: process.env.CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET,
-    });
-
-    const { discription, slogan, name, chatType, id, isImgUpdated, image } =
-      req.body;
+    const { discription, slogan, name, chatType, id, isImgUpdated } = req.body;
     let newData;
 
     if (chatType === "group") {
       if (isImgUpdated) {
-        let result = await cloudinary.v2.uploader.upload(image);
         newData = {
           discription: discription,
           name: name,
-          image: result.secure_url,
+          image: req.body.newImage,
         };
       } else {
         newData = {
@@ -627,12 +681,11 @@ const updateProfileInfo: RequestHandler = async (req, res) => {
       }
     } else {
       if (isImgUpdated) {
-        let result = await cloudinary.v2.uploader.upload(image);
         newData = {
           discription: discription,
           name: name,
           slogan: slogan,
-          image: result.secure_url,
+          image: req.body.newImage,
         };
       } else {
         newData = {
@@ -666,6 +719,98 @@ const updateProfileInfo: RequestHandler = async (req, res) => {
   }
 };
 
+const changeChatTheme: RequestHandler = async (req, res) => {
+  try {
+    const { themeDetails, file_url, chatId } = req.body;
+
+    let theme;
+    if (file_url) {
+      theme = {
+        URL: file_url,
+        name: "custom",
+      };
+    } else {
+      theme = themeDetails;
+    }
+
+    const updateChat = await Chat.updateOne(
+      { _id: chatId },
+      { $set: { theme: theme } }
+    );
+
+    res.status(200).send({
+      success: true,
+      message: "Theme changed successfully",
+      theme: theme,
+    });
+  } catch (err: any) {
+    res.status(500).send(err.message);
+  }
+};
+
+const loadMoreChats: RequestHandler = async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const offset = Number(req.query.offset);
+    const getChats = await Chat.find({
+      $and: [
+        {
+          $or: [{ users: { $in: userId } }, { "removedUsers._id": userId }],
+        },
+      ],
+    })
+      .populate({
+        path: "users",
+        model: "user",
+        select: "_id name image username blockedUsers",
+      })
+      .populate({
+        path: "latestMessage",
+        model: "message",
+        populate: [
+          {
+            path: "sender",
+            model: "user",
+            select: "_id image username name email",
+          },
+          {
+            path: "seenBy",
+            model: "user",
+            select: "_id username",
+          },
+        ],
+      })
+      .populate({
+        path: "messages",
+        model: "message",
+        select: "_id seenBy deletedFor ",
+        populate: { path: "seenBy", select: "_id username", model: "user" },
+      })
+      .select("-chatClearedFor -__v -chatDeleteFor")
+      .sort({ updatedAt: -1 })
+      .skip(offset)
+      .limit(15);
+
+    const totalDocuments = await Chat.countDocuments({
+      $and: [
+        {
+          $or: [{ users: { $in: userId } }, { "removedUsers._id": userId }],
+        },
+      ],
+    });
+
+    res.status(200).send({
+      success: true,
+      message: "More chats fetched successfully",
+      isMore: totalDocuments > offset + 15,
+      totalDocuments: totalDocuments,
+      chats: getChats,
+    });
+  } catch (err: any) {
+    res.status(500).send(err.message);
+  }
+};
+
 export default {
   getAllUserChats,
   createGroupChat,
@@ -678,5 +823,7 @@ export default {
   getSingleChat,
   leaveChat,
   updateProfileInfo,
-  getSingelChatWithUsers,
+  isChatExists,
+  changeChatTheme,
+  loadMoreChats,
 };
