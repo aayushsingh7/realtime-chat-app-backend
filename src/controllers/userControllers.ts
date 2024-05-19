@@ -6,11 +6,13 @@ import jwt from "jsonwebtoken";
 const register: RequestHandler = async (req, res) => {
   try {
     const { username, email, password, name } = req.body;
-    const isUserExists = await User.findOne({ email: email });
-    if (isUserExists) {
+    const isUserExistsOnEmail = await User.findOne({ email: email });
+    const isUserExistsOnUsername = await User.findOne({ username: username });
+
+    if (isUserExistsOnEmail || isUserExistsOnUsername) {
       return res.status(400).send({
         success: false,
-        message: "User already exists with the given email.",
+        message:isUserExistsOnEmail ? "Username already taken, please choose another one." : "User already exists with the given email.",
       });
     }
 
