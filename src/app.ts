@@ -19,7 +19,16 @@ cloudinary.v2.config({
 });
 
 app.use(express.json({ limit: "10mb" }));
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ 
+  origin: [
+    "https://main--realtime-chat-app-07.netlify.app",
+    "https://realtime-chat-app-07.netlify.app",
+    "https://6489fdb7ffbbca0008fbce8e--realtime-chat-app-07.netlify.app",
+    "https://chatverse-chat.netlify.app",
+    "https://api.cloudinary.com"
+  ], 
+  credentials: true 
+}));
 app.use(cookieParser());
 app.use("/api", userRoutes);
 app.use("/api", messageRoutes);
@@ -33,11 +42,9 @@ const io = require("socket.io")(server, {
   cors: {
     origin: [
       "https://main--realtime-chat-app-07.netlify.app",
-      "http://localhost:5173",
       "https://realtime-chat-app-07.netlify.app",
       "https://6489fdb7ffbbca0008fbce8e--realtime-chat-app-07.netlify.app",
       "https://chatverse-chat.netlify.app",
-       "http://localhost:4173",
     ],
   },
 });
