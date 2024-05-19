@@ -36,6 +36,7 @@ const io = require("socket.io")(server, {
       "http://localhost:5173",
       "https://realtime-chat-app-07.netlify.app",
       "https://6489fdb7ffbbca0008fbce8e--realtime-chat-app-07.netlify.app",
+       "http://localhost:4173",
     ],
   },
 });
