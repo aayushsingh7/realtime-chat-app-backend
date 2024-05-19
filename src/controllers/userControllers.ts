@@ -204,7 +204,11 @@ const getLoggedInUser: RequestHandler = async (req, res) => {
 
 const logoutUser: RequestHandler = async (req, res) => {
   try {
-    res.clearCookie("chatverse");
+   res.clearCookie("chatverse", {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none"
+});
     res.status(200).send({ success: true, msg: "Logout successfully" });
   } catch (err: any) {
     res.status(500).send({ success: false, message: err.message });
