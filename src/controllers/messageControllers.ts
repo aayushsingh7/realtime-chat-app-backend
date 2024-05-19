@@ -199,7 +199,9 @@ const addEventAlertMessage: RequestHandler = async (req, res) => {
       eventPerformed: eventPerformed,
     });
 
-    await newMessage.save();
+    await (
+      await newMessage.save()
+    ).populate({ path: "sender", select: "_id", model: "user" });
 
     let updateLatestMessage = await Chat.updateOne(
       { _id: chatId },
