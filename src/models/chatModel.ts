@@ -30,7 +30,11 @@ const chatModel = new mongoose.Schema(
       { type: mongoose.Schema.Types.ObjectId, ref: "message", default: [] },
     ],
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-    image: { type: String, default: "" },
+    image: {
+      type: String,
+      default:
+        "https://i.pinimg.com/474x/ec/e2/b0/ece2b0f541d47e4078aef33ffd22777e.jpg",
+    },
     name: { type: String, default: "user-chat" },
     description: { type: String, default: "" },
     removedUsers: [
