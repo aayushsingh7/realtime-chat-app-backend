@@ -60,7 +60,6 @@ io.on("connection", (socket: any) => {
   socket.on("new message", (newMessage: MessageType, chat: any) => {
     if (!chat || !chat.users) return;
     chat.users.forEach((user: UserType) => {
-      console.log("new messsage received");
       if (user._id === newMessage.sender._id) return;
       io.in(user._id).emit("new message received", newMessage, chat);
     });
@@ -155,7 +154,6 @@ io.on("connection", (socket: any) => {
   socket.on(
     "promote to admin",
     (promoterUserId: string, promotedUserId: string, chat: any) => {
-      console.log("add to admin has been triggered", chat);
       if (!chat && !chat.users) return console.log("Invalid Chat");
       chat.users.forEach((user: UserType) => {
         io.in(user._id).emit(
@@ -171,7 +169,6 @@ io.on("connection", (socket: any) => {
   socket.on(
     "remove from admin",
     (removerUserId: string, removedUserId: string, chat: any) => {
-      console.log("remove from admin has been triggered", chat);
       if (!chat && !chat.users) return console.log("Invalid Chat");
       chat.users.forEach((user: UserType) => {
         io.in(user._id).emit(
@@ -194,7 +191,6 @@ io.on("connection", (socket: any) => {
 
   socket.on("typing started", (typingUser: UserType, chat: any) => {
     if (!chat && !chat.users) return console.log("Invalid chat");
-    console.log(typingUser);
     chat.users.forEach((user: UserType) => {
       if (user._id === typingUser._id) return;
       io.in(user._id).emit("typing", typingUser, chat);
@@ -222,10 +218,8 @@ io.on("connection", (socket: any) => {
   socket.on(
     "block user",
     (userId: string, blockedUserId: string, chat: any) => {
-      console.log("block user");
       if (!chat && !chat.users) return console.log("Invalid Chat");
       chat.users.map((user: UserType) => {
-        console.log(user);
         io.in(user._id).emit("user blocked", userId, blockedUserId, chat);
       });
     }
@@ -234,10 +228,8 @@ io.on("connection", (socket: any) => {
   socket.on(
     "unBlock user",
     (userId: string, blockedUserId: string, chat: any) => {
-      console.log("unBlock user");
       if (!chat && !chat.users) return console.log("Invalid Chat");
       chat.users.map((user: UserType) => {
-        console.log(user);
         io.in(user._id).emit("user unBlocked", userId, blockedUserId, chat);
       });
     }
