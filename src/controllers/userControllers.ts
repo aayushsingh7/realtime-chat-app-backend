@@ -12,7 +12,9 @@ const register: RequestHandler = async (req, res) => {
     if (isUserExistsOnEmail || isUserExistsOnUsername) {
       return res.status(400).send({
         success: false,
-        message:isUserExistsOnEmail ? "Username already taken, please choose another one." : "User already exists with the given email.",
+        message: isUserExistsOnEmail
+          ? "Username already taken, please choose another one."
+          : "User already exists with the given email.",
       });
     }
 
@@ -41,7 +43,9 @@ const register: RequestHandler = async (req, res) => {
         secure: true,
         maxAge: 21 * 24 * 60 * 60 * 1000,
         sameSite: "none",
+        path: "/",
       });
+
       res
         .status(200)
         .send({ success: true, message: "User registered successfully" });
@@ -71,12 +75,15 @@ const login: RequestHandler = async (req, res) => {
         { _id: isUserExists._id },
         `${process.env.SECRET_KEY}`
       );
+
       res.cookie("chatverse", token, {
         httpOnly: true,
         secure: true,
         maxAge: 21 * 24 * 60 * 60 * 1000,
         sameSite: "none",
+        path: "/",
       });
+
       res
         .status(200)
         .send({ success: true, msg: "User loggedin successfully" });
@@ -204,11 +211,11 @@ const getLoggedInUser: RequestHandler = async (req, res) => {
 
 const logoutUser: RequestHandler = async (req, res) => {
   try {
-   res.clearCookie("chatverse", {
-  httpOnly: true,
-  secure: true,
-  sameSite: "none"
-});
+    res.clearCookie("chatverse", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    });
     res.status(200).send({ success: true, msg: "Logout successfully" });
   } catch (err: any) {
     res.status(500).send({ success: false, message: err.message });
