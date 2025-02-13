@@ -11,6 +11,7 @@ import chatRoutes from "./routes/chatRoutes";
 import cookieParser from "cookie-parser";
 import { ChatType, MessageType, UserType } from "./types/types";
 import User from "./models/userMode";
+import statusRoutes from "./routes/statusModel";
 
 cloudinary.v2.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -27,6 +28,7 @@ app.use(
       "https://6489fdb7ffbbca0008fbce8e--realtime-chat-app-07.netlify.app",
       "https://chatverse-chat.netlify.app",
       "https://api.cloudinary.com",
+      "http://localhost:5173",
     ],
     credentials: true,
   })
@@ -35,6 +37,7 @@ app.use(cookieParser());
 app.use("/api", userRoutes);
 app.use("/api", messageRoutes);
 app.use("/api", chatRoutes);
+app.use("/api", statusRoutes);
 
 let server = app.listen(process.env.PORT, () => {
   console.log(`Server Started At PORT: ${process.env.PORT}`);
@@ -47,6 +50,7 @@ const io = require("socket.io")(server, {
       "https://realtime-chat-app-07.netlify.app",
       "https://6489fdb7ffbbca0008fbce8e--realtime-chat-app-07.netlify.app",
       "https://chatverse-chat.netlify.app",
+      "http://localhost:5173",
     ],
   },
 });

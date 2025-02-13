@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
 const userModel = new mongoose.Schema(
   {
@@ -19,6 +19,8 @@ const userModel = new mongoose.Schema(
     role: { type: String, default: "user" },
     username: { type: String, default: "" },
     slogan: { type: String, default: "Hey there! i am using ChatVerse😊." },
+    activeStatus: { type: Boolean, default: false },
+    latestStatus: { type: Schema.Types.ObjectId, ref: "status" },
   },
   { timestamps: true }
 );
