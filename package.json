@@ -6,12 +6,14 @@
   "scripts": {
     "start": "node dist/app.js",
     "build": "tsc",
-    "dev": "nodemon --config nodemon.json src/app.ts"
+    "dev": "nodemon --config nodemon.json src/app.ts",
+    "test:concurrency": "artillery run tests/artillery/concurrency.yaml"
   },
   "author": "Aayush Singh",
   "license": "ISC",
   "dependencies": {
     "@types/mongoose": "^5.11.97",
+    "artillery": "^2.0.27",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
     "cookie-parser": "^1.4.6",
