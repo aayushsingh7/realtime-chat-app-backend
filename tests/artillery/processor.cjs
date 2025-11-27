@@ -1,15 +1,13 @@
-const {ObjectId} = require("mongodb")
+const { ObjectId } = require("mongodb");
 
 module.exports = {
   sendMessage,
 };
 
-
-
 function sendMessage(context, events, next) {
-  // Build your payload here
+
   const payload = {
-    userId: new ObjectId(),
+    sender:new ObjectId(),
     isReply: false,
     repliedTo: null,
     file: null,

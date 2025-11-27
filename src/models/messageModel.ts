@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
 const messageSchema: Schema = new mongoose.Schema(
   {
@@ -45,6 +45,8 @@ const messageSchema: Schema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+messageSchema.index({chat:1, "reactEmoji.user": 1, createdAt: -1})
 
 const Message = mongoose.model("message", messageSchema);
 
