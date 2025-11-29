@@ -8,7 +8,6 @@ import uploadFiles from "../middleware/uploadFiles";
 chatRoutes.get("/chats", userAuthentication, chatControllers.getUserChats);
 chatRoutes.post("/chats", userAuthentication, chatControllers.createOrGetChat);
 chatRoutes.get("/chats/load-more", userAuthentication, chatControllers.loadMoreChats);
-chatRoutes.put("/chats/:chatId/clear", userAuthentication, chatControllers.clearOrDeleteChat);
 chatRoutes.put("/chats/:chatId/clear-or-delete", userAuthentication, chatControllers.clearOrDeleteChat);
 chatRoutes.put("/chats/:chatId/theme", userAuthentication, uploadFiles, chatControllers.changeChatTheme);
 chatRoutes.put("/chats/:chatId/info", userAuthentication, profileImageUpload, chatControllers.updateChatInfo);

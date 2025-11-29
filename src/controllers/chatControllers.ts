@@ -1,9 +1,9 @@
-import e, { RequestHandler, Request } from "express";
-import Chat from "../models/chatModel";
-import User from "../models/userMode";
 import cloudinary from "cloudinary";
+import { RequestHandler } from "express";
+import mongoose from "mongoose";
+import Chat from "../models/chatModel";
 import Message from "../models/messageModel";
-import mongoose, { model } from "mongoose";
+import User from "../models/userModel";
 
 const createOrGetChat: RequestHandler = async (req, res) => {
   const { userOne, userTwo, chatId, isGroupChat, user } = req.body;
@@ -11,7 +11,7 @@ const createOrGetChat: RequestHandler = async (req, res) => {
     let chat;
 
     if (isGroupChat) {
-      chat = await Chat.findOne({ _id: chatId });
+      chat = await Chat.findOne({ _id: chatId }).select("-__v -removedUsers");
     } else {
       const pair = [userOne, userTwo].sort();
       chat = await Chat.findOneAndUpdate(
@@ -29,7 +29,7 @@ const createOrGetChat: RequestHandler = async (req, res) => {
           upsert: true,
           new: true,
         }
-      );
+      ).select("-__v -removedUsers");
     }
 
     await chat?.populate({
@@ -62,11 +62,10 @@ const getUserChats: RequestHandler = async (req, res) => {
     const userId = req.body.userId;
     const limit = 15;
 
-    const getChats = await Chat.find({
-      $and: [
-        {
-          $or: [{ users: { $in: userId } }, { "removedUsers._id": userId }],
-        },
+    const chats = await Chat.find({
+      $or: [
+        { users: userId },
+        { [`removedUsers.${userId}`]: { $exists: true } },
       ],
     })
       .populate({
@@ -77,19 +76,19 @@ const getUserChats: RequestHandler = async (req, res) => {
           model: "user",
           select: "_id username name",
         },
-        select: "msgType message fileName document sender seenBy",
+        select: "msgType message fileName document sender seenBy moderator",
       })
       .select("isGroupChat _id updatedAt image name latestMessage")
       .sort({ updatedAt: -1 })
       .limit(limit + 1);
 
-    const isMore = getChats.length > limit;
+    const isMore = chats.length > limit;
 
-    if (getChats.length > 0) {
+    if (chats.length > 0) {
       res.status(200).send({
         success: true,
         message: "Chats fetched successfully",
-        chats: getChats,
+        chats: chats,
         isMore,
       });
     } else {
@@ -151,6 +150,7 @@ const createGroupChat: RequestHandler = async (req, res) => {
       {
         path: "latestMessage",
         model: "message",
+        select: "msgType message fileName document moderator",
       },
     ]);
 
@@ -164,16 +164,17 @@ const createGroupChat: RequestHandler = async (req, res) => {
       },
       createdBy: moderator,
       chatMsg: "created group",
+      addAlertMessage,
     });
   } catch (err: any) {
     console.error("Create Group Chat Error:", err);
-    res.status(500).send(err);
+    res.status(500).send({ success: false, message: err.message });
   }
 };
 
 const addAdmin: RequestHandler = async (req, res) => {
   try {
-    const { adminId, chatId, userId } = req.body;
+    const { adminId, chatId } = req.body;
 
     const findChat = await Chat.findOne({ _id: chatId });
     if (!findChat) {
@@ -197,7 +198,7 @@ const addAdmin: RequestHandler = async (req, res) => {
 
 const removeAdmin: RequestHandler = async (req, res) => {
   try {
-    const { adminId, chatId, userId } = req.body;
+    const { adminId, chatId } = req.body;
 
     const findChat = await Chat.findOne({ _id: chatId }).select("createdBy");
     if (!findChat) {
@@ -280,14 +281,14 @@ const addUser: RequestHandler = async (req, res) => {
       { _id: chatId },
       {
         $push: { users: newUserId },
-        $pull: { removedUsers: { _id: newUserId } },
+        $unset: { [`removedUsers.${newUserId}`]: "" },
       },
       { new: true }
     )
       .populate({
         path: "users",
         model: "user",
-        select: "_id name image username blockedUsers",
+        select: "_id name image username",
       })
       .populate({
         path: "latestMessage",
@@ -297,9 +298,9 @@ const addUser: RequestHandler = async (req, res) => {
           model: "user",
           select: "_id image username name email",
         },
+        select: "msgType message sender seenBy moderator",
       })
-      .select("-removedUsers -__v")
-      .sort({ updatedAt: -1 });
+      .select("-removedUsers -__v ");
 
     res.status(200).send({
       success: true,
@@ -315,15 +316,10 @@ const removeUser: RequestHandler = async (req, res) => {
   try {
     const { newUserId, chatId } = req.body;
 
-    const addUser = {
-      _id: newUserId,
-      createdAt: new Date().toISOString(),
-    };
-
     const addToRemoved = await Chat.updateOne(
       { _id: chatId },
       {
-        $push: { removedUsers: addUser },
+        $set: { [`removedUsers.${newUserId}`]: new Date() },
         $pull: {
           admins: newUserId,
           users: newUserId,
@@ -331,7 +327,7 @@ const removeUser: RequestHandler = async (req, res) => {
       }
     );
 
-    if (addToRemoved.modifiedCount === 1) {
+    if (addToRemoved.acknowledged) {
       res.status(200).json({
         success: true,
         message: "User removed",
@@ -352,16 +348,11 @@ const leaveChat: RequestHandler = async (req, res) => {
   try {
     const { userId, chatId } = req.body;
 
-    const user = {
-      _id: userId,
-      createdAt: new Date().toISOString(),
-    };
-
     const adminLeave = await Chat.updateOne(
       { _id: chatId, admins: userId },
       {
-        $push: { removedUsers: user },
-        $pull: { admins: userId },
+        $set: { [`removedUsers.${userId}`]: new Date() },
+        $pull: { admins: userId, users: userId },
       }
     );
 
@@ -369,7 +360,7 @@ const leaveChat: RequestHandler = async (req, res) => {
       const userLeave = await Chat.updateOne(
         { _id: chatId, users: userId },
         {
-          $push: { removedUsers: user },
+          $set: { [`removedUsers.${userId}`]: new Date() },
           $pull: { users: userId },
         }
       );
@@ -492,11 +483,10 @@ const loadMoreChats: RequestHandler = async (req, res) => {
     const { userId } = req.query;
     const offset = Number(req.query.offset);
     const limit = 15;
-    const getChats = await Chat.find({
-      $and: [
-        {
-          $or: [{ users: { $in: userId } }, { "removedUsers._id": userId }],
-        },
+    const chats = await Chat.find({
+      $or: [
+        { users: userId },
+        { [`removedUsers.${userId}`]: { $exists: true } },
       ],
     })
       .populate({
@@ -512,24 +502,20 @@ const loadMoreChats: RequestHandler = async (req, res) => {
           model: "user",
           select: "_id image username name email",
         },
-        // {
-        //   path: "seenBy",
-        //   model: "user",
-        //   select: "_id username",
-        // },
+        select: "msgType message fileName document sender seenBy moderator",
       })
-      .select("-chatClearedFor -__v -chatDeleteFor")
+      .select("isGroupChat _id updatedAt image name latestMessage")
       .sort({ updatedAt: -1 })
       .skip(offset)
       .limit(limit + 1);
 
-    const isMore = getChats.length > limit;
+    const isMore = chats.length > limit;
 
     res.status(200).send({
       success: true,
       message: "More chats fetched successfully",
       isMore,
-      chats: getChats,
+      chats: chats,
     });
   } catch (err: any) {
     res.status(500).send(err.message);

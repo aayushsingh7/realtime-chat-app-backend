@@ -19,30 +19,17 @@ const chatSchema = new mongoose.Schema(
     },
     name: { type: String, default: "user-chat" },
     description: { type: String, default: "" },
-    removedUsers: [
-      {
-        _id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-        createdAt: { type: Date, default: new Date().toISOString() },
-      },
-      { _id: false },
-    ],
-    mediaFiles: [
-      {
-        _id: { type: String },
-        extension: { type: String },
-        message: { type: String },
-        msgType: { type: String },
-        document: { type: Boolean },
-        default: [],
-      },
-    ],
+    removedUsers: {
+      type: Map,
+      of: Date,
+    },
     theme: {
       URL: {
         type: String,
         default:
           "https://i.pinimg.com/736x/ba/c8/15/bac815fbeff16270f635ad30c00d71f6.jpg",
       },
-      name: { type: String, default: "default" },
+      name: { type: String, default: "Group Chat" },
     },
   },
   { timestamps: true }
