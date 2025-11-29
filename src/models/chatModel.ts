@@ -1,21 +1,6 @@
 import mongoose, { Model, Schema } from "mongoose";
 
-interface ChatInt {
-  isGroupChat: boolean;
-  admins: string[];
-  users: string[];
-  latestMessage: string;
-  messages: string[];
-  createdBy: string;
-  image: string;
-  name: string;
-  discription: string;
-  removedUsers: {}[];
-  chatDeletedFor: {}[];
-  chatClearedFor: {}[];
-}
-
-const chatModel = new mongoose.Schema(
+const chatSchema = new mongoose.Schema(
   {
     isGroupChat: { type: Boolean, default: false },
     admins: [
@@ -26,9 +11,6 @@ const chatModel = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "message",
     },
-    messages: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "message", default: [] },
-    ],
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
     image: {
       type: String,
@@ -41,22 +23,6 @@ const chatModel = new mongoose.Schema(
       {
         _id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
         createdAt: { type: Date, default: new Date().toISOString() },
-      },
-      { _id: false },
-    ],
-    chatClearedFor: [
-      {
-        _id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-        createdAt: { type: Date, default: new Date().toISOString() },
-        default: [],
-      },
-      { _id: false },
-    ],
-    chatDeletedFor: [
-      {
-        _id: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-        createdAt: { type: Date, default: new Date().toISOString() },
-        default: [],
       },
       { _id: false },
     ],
@@ -82,6 +48,8 @@ const chatModel = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Chat = mongoose.model("chat", chatModel);
+chatSchema.index({ users: 1, isGroupChat: 1 });
+
+const Chat = mongoose.model("chat", chatSchema);
 
 export default Chat;
