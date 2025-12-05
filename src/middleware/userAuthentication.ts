@@ -1,7 +1,7 @@
 import { RequestHandler, Request } from "express";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
-import User from "../models/userMode";
+import User from "../models/userModel";
 
 interface DecodedPayload {
   _id: string;

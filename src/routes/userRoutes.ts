@@ -1,25 +1,13 @@
 import express from "express";
-const userRoutes = express.Router();
-import userControllers from "../controllers/userControllers";
+import userControllers from "../controllers/userController";
 import userAuthentication from "../middleware/userAuthentication";
 import uploadFiles from "../middleware/uploadFiles";
 
-userRoutes.put("/block-user", userAuthentication, userControllers.blockUser);
-userRoutes.put("/unblock-user", userAuthentication, userControllers.unBlockUser);
-userRoutes.post("/register", userControllers.register);
-userRoutes.post("/login", userControllers.login);
-userRoutes.get("/searchUsers", userAuthentication, userControllers.searchUsers);
-userRoutes.get(
-  "/authenticate",
-  userAuthentication,
-  userControllers.getLoggedInUser
-);
-userRoutes.get("/logout", userControllers.logoutUser);
-userRoutes.put(
-  "/user/update-profile",
-  uploadFiles,
-  userAuthentication,
-  userControllers.updateProfile
-);
+const router = express.Router();
 
-export default userRoutes;
+router.get("/users/search", userAuthentication, userControllers.searchUsers);
+router.patch("/users/me", userAuthentication, uploadFiles, userControllers.updateProfile);
+router.post("/users/:id/block", userAuthentication, userControllers.blockUser);
+router.delete("/users/:id/block", userAuthentication, userControllers.unBlockUser);
+
+export default router;

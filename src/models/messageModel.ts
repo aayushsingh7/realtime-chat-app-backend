@@ -33,14 +33,6 @@ const messageSchema: Schema = new mongoose.Schema(
       default: null,
     },
     fileSize: { type: Number, default: 0 },
-    starredBy: [
-      {
-        userId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "user",
-        },
-      },
-    ],
     chat: { type: mongoose.Schema.Types.ObjectId, ref: "chat" },
   },
   { timestamps: true }

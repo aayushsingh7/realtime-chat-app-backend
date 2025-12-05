@@ -1,65 +1,22 @@
 import express from "express";
-import messageController from "../controllers/messageControllers";
+import messageController from "../controllers/messageController";
 import userAuthentication from "../middleware/userAuthentication";
 import uploadFiles from "../middleware/uploadFiles";
+          
+const router = express.Router();
 
-const messageRoutes = express.Router();
+router.post("/messages", userAuthentication, uploadFiles, messageController.addMessage);
+router.get("/messages", userAuthentication, messageController.messages);
+router.delete("/messages", userAuthentication, messageController.deleteMessages);
+router.patch("/messages/seen", userAuthentication, messageController.messagesSeen);
+router.post("/messages/alert", userAuthentication, messageController.addEventAlertMessage);
+router.post("/messages/star", userAuthentication, messageController.addToStarredMessages);
+router.delete("/messages/star", userAuthentication, messageController.removeFromStarredMessages);
+router.post("/messages/:id/reactions", userAuthentication, messageController.addReaction);
+router.delete("/messages/:id/reactions", userAuthentication, messageController.removeReaction);
 
-messageRoutes.put(
-  "/new-message",
-  userAuthentication,
-  uploadFiles,
-  messageController.addMessage
-);
-messageRoutes.put(
-  "/group-chat/alert-message",
-  userAuthentication,
-  messageController.addEventAlertMessage
-);
-messageRoutes.delete(
-  "/delete-message",
-  userAuthentication,
-  messageController.deleteMessage
-);
-messageRoutes.get("/messages", userAuthentication, messageController.messages);
-messageRoutes.put(
-  "/add-to-star-messages",
-  userAuthentication,
-  messageController.addToStarredMessages
-);
-messageRoutes.put(
-  "/remove-from-star-messages",
-  userAuthentication,
-  messageController.removeFromStarredMessages
-);
-messageRoutes.get(
-  "/starred-messages",
-  userAuthentication,
-  messageController.getStarredMessages
-);
-messageRoutes.put(
-  "/message-seen",
-  userAuthentication,
-  messageController.messageSeen
-);
-messageRoutes.put(
-  "/add-reaction",
-  userAuthentication,
-  messageController.addReaction
-);
-messageRoutes.put(
-  "/remove-reaction",
-  userAuthentication,
-  messageController.removeReaction
-);
-messageRoutes.get(
-  "/search-starred-messages",
-  userAuthentication,
-  messageController.searchStarredMessages
-);
-messageRoutes.get(
-  "/more-messages",
-  userAuthentication,
-  messageController.messages
-);
-export default messageRoutes;
+router.get("/starred-messages", userAuthentication, messageController.getStarredMessages);
+router.get("/starred-messages/search", userAuthentication, messageController.searchStarredMessages);
+
+
+export default router;

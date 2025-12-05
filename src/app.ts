@@ -4,14 +4,15 @@ import cors from "cors";
 import dotenv from "dotenv";
 dotenv.config();
 import "./database/dbConnect";
-import userRoutes from "./routes/userRoutes";
 import cloudinary from "cloudinary";
+import userRoutes from "./routes/userRoutes";
 import messageRoutes from "./routes/messageRoutes";
 import chatRoutes from "./routes/chatRoutes";
+import statusRoutes from "./routes/statusModel";
+import authRoutes from "./routes/authRoutes"
 import cookieParser from "cookie-parser";
 import { ChatType, MessageType, UserType } from "./types/types";
-import User from "./models/userMode";
-import statusRoutes from "./routes/statusModel";
+import User from "./models/userModel";
 
 cloudinary.v2.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -38,6 +39,7 @@ app.use("/api", userRoutes);
 app.use("/api", messageRoutes);
 app.use("/api", chatRoutes);
 app.use("/api", statusRoutes);
+app.use("/api", authRoutes)
 
 let server = app.listen(process.env.PORT, () => {
   console.log(`Server Started At PORT: ${process.env.PORT}`);
@@ -45,14 +47,17 @@ let server = app.listen(process.env.PORT, () => {
 
 const io = require("socket.io")(server, {
   cors: {
-    origin: [
-      "https://main--realtime-chat-app-07.netlify.app",
-      "https://realtime-chat-app-07.netlify.app",
-      "https://6489fdb7ffbbca0008fbce8e--realtime-chat-app-07.netlify.app",
-      "https://chatverse-chat.netlify.app",
-      "http://localhost:5173",
-    ],
+    // origin: [
+    //   "https://main--realtime-chat-app-07.netlify.app",
+    //   "https://realtime-chat-app-07.netlify.app",
+    //   "https://6489fdb7ffbbca0008fbce8e--realtime-chat-app-07.netlify.app",
+    //   "https://chatverse-chat.netlify.app",
+    //   "http://localhost:5173",
+    // ],
+    origin: "*",
   },
+  transports: ["websocket", "polling"],
+  allowEIO3: true,
 });
 
 io.on("connection", (socket: any) => {
@@ -63,6 +68,7 @@ io.on("connection", (socket: any) => {
 
   socket.on("new message", (newMessage: MessageType, chat: any) => {
     if (!chat || !chat.users) return;
+    console.log(chat.users)
     chat.users.forEach((user: UserType) => {
       if (user._id === newMessage.sender._id) return;
       io.in(user._id).emit("new message received", newMessage, chat);

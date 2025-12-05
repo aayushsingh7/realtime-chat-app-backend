@@ -1,6 +1,6 @@
 import { RequestHandler } from "express";
 import Status from "../models/statusModel";
-import User from "../models/userMode";
+import User from "../models/userModel";
 
 const getStatus: RequestHandler = async (req, res) => {
   const { userId } = req.query;

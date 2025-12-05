@@ -3,17 +3,36 @@ interface ThemeType {
   name: string;
 }
 
-interface ReactMessageType {
-  userId: string;
+export interface MixedType {
+  _id: string;
+  image: string;
+  email: string;
+  name: string;
+  slogan: string;
+  blockedUsers: Array<string>;
+  lastSeen: Date;
+}
+
+export interface Notification_Settings {
+  messages_notifications: boolean;
+  react_on_message_notifications: boolean;
+  calls_notifications: boolean;
+  media_preview: boolean;
+  text_preview: boolean;
+}
+
+export interface ReactMessageType {
+  user: UserType;
   emoji: string;
 }
 
-interface StarredMessage {
+export interface StarredMessageType {
   chatId: string;
   userId: string;
 }
 
 export interface MediaFilesTypes {
+  _id: string;
   extension: string;
   msgType: string;
   message: string;
@@ -25,15 +44,19 @@ export interface UserType {
   name: string;
   image: string;
   email?: string;
-  password?: string;
-  blockedUsers?: Array<UserType>;
-  onlineStatus?: boolean;
-  lastOnline?: Date;
-  description?: string;
-  role?: string;
-  username?: string;
-  slogan?: string;
-  createdAt?: Date;
+  blockedUsers: Array<string>;
+  onlineStatus: boolean;
+  lastSeen: Date;
+  description: string;
+  role: string;
+  username: string;
+  slogan: string;
+  createdAt: Date;
+  activeStatus: boolean;
+  latestStatus: StatusType;
+  starredMessages: Array<string>;
+  clearedChats:Map<string, Date>;
+  deletedChats: Map<string, Date>;
 }
 
 export interface MessageType {
@@ -44,7 +67,7 @@ export interface MessageType {
   document: boolean;
   seenBy: Array<UserType>;
   reactEmoji?: Array<ReactMessageType>;
-  fileName?: string;
+  fileName?: string | null;
   moderator?: UserType;
   user?: UserType;
   caption?: string;
@@ -53,8 +76,8 @@ export interface MessageType {
   status?: string;
   fileSize?: number;
   createdAt?: string;
-  starredBy: Array<StarredMessage>;
   eventPerformed?: string;
+  chat?: ChatType;
 }
 
 export interface ChatType {
@@ -63,18 +86,25 @@ export interface ChatType {
   admins: Array<UserType>;
   users: Array<UserType>;
   latestMessage: MessageType;
-  messages: Array<MessageType>;
   createdBy: UserType;
   image: string;
   name: string;
   description: string;
-  removedUsers: Array<UserType>;
-  chatClearedFor: Array<UserType>;
-  chatDeletedFor: Array<UserType>;
+  removedUsers: Map<string , Date>;
   createdAt: string;
   updatedAt: string;
   slogan?: string;
-  mediaFiles?: Array<MediaFilesTypes>;
   theme?: ThemeType;
   email?: string;
+}
+
+export interface StatusType {
+  _id: string;
+  extension: string;
+  fileType: string;
+  url: string;
+  postedBy: UserType;
+  seenBy: Array<string>;
+  chatId: string;
+  createdAt: Date;
 }

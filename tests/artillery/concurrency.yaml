@@ -12,8 +12,8 @@ scenarios:
     flow:
       - loop:
           - function: "sendMessage"
-          - put:
-              url: "/api/new-message"
+          - post:
+              url: "/api/messages"
               json: "{{ messagePayload }}"
           - think: 0.4
         count: 10
