@@ -12,6 +12,7 @@ router.get("/chats/load-more", userAuthentication, chatControllers.loadMoreChats
 router.put("/chats/:id/clear-or-delete", userAuthentication, chatControllers.clearOrDeleteChat);
 router.put("/chats/:id/theme", userAuthentication, uploadFiles, chatControllers.changeChatTheme);
 router.put("/chats/:id/info", userAuthentication, profileImageUpload, chatControllers.updateChatInfo);
+router.patch("/chats/last-seen-bulk", userAuthentication, chatControllers.lastSeenMessage); 
 
 router.post("/groups", userAuthentication, chatControllers.createGroupChat);
 router.put("/groups/:id/users/add", userAuthentication, chatControllers.addUser);

@@ -22,9 +22,6 @@ const messageSchema: Schema = new mongoose.Schema(
       name: { type: String },
     },
     fileName: { type: String, default: null },
-    seenBy: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "user", default: [] },
-    ],
     caption: { type: String, default: null },
     isReply: { type: Boolean, default: false },
     repliedTo: {

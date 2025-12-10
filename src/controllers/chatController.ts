@@ -5,47 +5,80 @@ import Chat from "../models/chatModel";
 import Message from "../models/messageModel";
 import User from "../models/userModel";
 import { ChatType } from "../types/types";
+import ChatMember from "../models/chatMemberModel";
 
-const getSanitizedChats = (chats: any[], userId: string) => {
+const getSanitizedChats = async (chats: any[], userId: string) => {
   if (!chats || !chats.length) return [];
+
+  const chatIds = chats.map((c) => c._id);
+  const slowestMembers = await ChatMember.aggregate([
+    {
+      $match: {
+        chat: { $in: chatIds },
+        user: { $ne: new mongoose.Types.ObjectId(userId) }, // Exclude ME
+      },
+    },
+    { $sort: { lastSeenMessageId: 1 } },
+    {
+      $group: {
+        _id: "$chat",
+        slowestSeenId: { $first: "$lastSeenMessage" },
+      },
+    },
+  ]);
+
+  const slowestMap = new Map(
+    slowestMembers.map((m) => [m._id.toString(), m.slowestSeenId])
+  );
 
   return chats.map((originalChat) => {
     const chat = { ...originalChat };
+    const slowestId =
+      slowestMap.get(chat._id.toString()) || "000000000000000000000000";
+    const isLatestMessageSeen =
+      slowestId.toString() >= chat.latestMessage?._id.toString();
+
+    console.log({ isLatestMessageSeen });
+
     const removalDate = chat.removedUsers?.[userId] || null;
-    const isUserRemovedStatus = chat.isGroupChat && removalDate !== null;
     chat.isRemoved = {
-      status: isUserRemovedStatus,
+      status: chat.isGroupChat && removalDate !== null,
       removedOn: removalDate,
     };
     delete chat.removedUsers;
+
     chat.isBlocked = false;
-    if (!chat.isGroupChat && chat.users && chat.users.length >= 2) {
-      const otherUser = chat.users.find((u: any) => u._id.toString() !== userId.toString());
-      
-      if (otherUser && otherUser.blockedUsers) {
-        chat.isBlocked = otherUser.blockedUsers.some((id: string) => id.toString() === userId.toString());
+    if (!chat.isGroupChat && chat.users) {
+      const otherUser = chat.users.find(
+        (u: any) => u._id.toString() !== userId.toString()
+      );
+      if (otherUser?.blockedUsers) {
+        chat.isBlocked = otherUser.blockedUsers.some(
+          (id: string) => id.toString() === userId.toString()
+        );
       }
     }
 
     if (chat.users) {
       chat.users = chat.users.map((user: any) => {
         const userCopy = { ...user };
-        const isBlockingMe =
-          userCopy.blockedUsers &&
-          userCopy.blockedUsers.some(
-            (id: string) => id.toString() === userId.toString()
-          );
+        const isBlockingMe = userCopy.blockedUsers?.some(
+          (id: string) => id.toString() === userId.toString()
+        );
 
         if (isBlockingMe) {
           userCopy.image =
             "https://i.pinimg.com/474x/ec/e2/b0/ece2b0f541d47e4078aef33ffd22777e.jpg";
         }
-
         delete userCopy.blockedUsers;
         return userCopy;
       });
     }
-    return chat;
+
+    return {
+      ...chat,
+      isLatestMessageSeen,
+    };
   });
 };
 
@@ -90,11 +123,32 @@ const createOrGetChat: RequestHandler = async (req, res) => {
       chat.image =
         "https://i.pinimg.com/474x/ec/e2/b0/ece2b0f541d47e4078aef33ffd22777e.jpg";
 
+    const participants = [
+      {
+        chat: chat?._id,
+        user: userOne,
+        unreadCount: 0,
+        lastSeenMessage: "000000000000000000000000",
+      },
+      {
+        chat: chat?._id,
+        user: userTwo,
+        unreadCount: 0,
+        lastSeenMessage: "000000000000000000000000",
+      },
+    ];
+
+    await ChatMember.insertMany(participants);
+
     res.status(200).send({
       success: true,
       message: "Chat fetched successfully",
       chat: chat,
+      participants,
     });
+
+    // message queue
+    // await ChatMember.insertMany(participants);
   } catch (err: any) {
     console.error(err);
     res.status(500).send({ success: false, message: err.message });
@@ -135,9 +189,20 @@ const getUserChats: RequestHandler = async (req, res) => {
       .limit(limit + 1)
       .lean();
 
+    const lastSeenMessagePerChatPromise = ChatMember.find({
+      user: userId,
+      chat: { $in: chats.map((chat: any) => chat._id) },
+    });
+
     //@ts-ignore
-    const sanitizedChats = getSanitizedChats(chats, userId);
+    const sanitizedChatsPromise = getSanitizedChats(chats, userId);
     const isMore = chats.length > limit;
+
+    const [lastSeenMessagePerChat, sanitizedChats] = await Promise.all([
+      lastSeenMessagePerChatPromise,
+      sanitizedChatsPromise,
+    ]);
+    // console.log({sanitizedChats})
 
     if (chats.length > 0) {
       res.status(200).send({
@@ -145,6 +210,7 @@ const getUserChats: RequestHandler = async (req, res) => {
         message: "Chats fetched successfully",
         chats: sanitizedChats,
         isMore,
+        lastSeenMessagePerChat,
       });
     } else {
       res
@@ -229,7 +295,7 @@ const createGroupChat: RequestHandler = async (req, res) => {
 
 const addAdmin: RequestHandler = async (req, res) => {
   try {
-     const chatId =req.params.id;
+    const chatId = req.params.id;
     const adminId = req.body.adminId;
 
     const findChat = await Chat.findOne({ _id: chatId });
@@ -254,7 +320,7 @@ const addAdmin: RequestHandler = async (req, res) => {
 
 const removeAdmin: RequestHandler = async (req, res) => {
   try {
-   const chatId =req.params.id;
+    const chatId = req.params.id;
     const adminId = req.body.adminId;
 
     const findChat = await Chat.findOne({ _id: chatId }).select("createdBy");
@@ -292,8 +358,8 @@ const removeAdmin: RequestHandler = async (req, res) => {
 
 const clearOrDeleteChat: RequestHandler = async (req, res) => {
   try {
-    const chatId = req.params.id
-    const {  userId, type } = req.body;
+    const chatId = req.params.id;
+    const { userId, type } = req.body;
     let update;
     if (type == "delete") {
       update = await User.updateOne(
@@ -333,7 +399,7 @@ const clearOrDeleteChat: RequestHandler = async (req, res) => {
 
 const addUser: RequestHandler = async (req, res) => {
   try {
-     const chatId =req.params.id;
+    const chatId = req.params.id;
     const newUserId = req.body.newUserId;
 
     const updateChat = await Chat.findOneAndUpdate(
@@ -357,14 +423,30 @@ const addUser: RequestHandler = async (req, res) => {
           model: "user",
           select: "_id image username name email",
         },
-        select: "msgType message sender seenBy moderator",
+        select: "msgType message sender seenBy moderator createdAt",
       })
-      .select("-removedUsers -__v ");
+      .select("-removedUsers -__v ")
+      .lean();
+
+    const newParticipantData = {
+      chat: chatId,
+      user: newUserId,
+      unreadCount: 0,
+      //@ts-ignore
+      lastSeenMessage: updateChat?.latestMessage?.createdAt,
+    };
+
+    const newParticipant = await ChatMember.findOneAndUpdate(
+      { chat: chatId, user: newUserId },
+      newParticipantData,
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).lean();
 
     res.status(200).send({
       success: true,
       message: "User added",
       newChat: updateChat,
+      newParticipant,
     });
   } catch (err: any) {
     res.status(500).send({ success: false, message: err.message });
@@ -376,7 +458,7 @@ const removeUser: RequestHandler = async (req, res) => {
     const chatId = req.params.id;
     const newUserId = req.body.newUserId;
 
-    const addToRemoved = await Chat.updateOne(
+    const removeUserPromise = Chat.updateOne(
       { _id: chatId },
       {
         $set: { [`removedUsers.${newUserId}`]: new Date() },
@@ -387,18 +469,26 @@ const removeUser: RequestHandler = async (req, res) => {
       }
     );
 
-    if (addToRemoved.acknowledged) {
-      res.status(200).json({
-        success: true,
-        message: "User removed",
-        chatMsg: `removed`,
-      });
-    } else {
+    const removeMemberPromise = ChatMember.deleteOne({
+      chat: chatId,
+      user: newUserId,
+    });
+    const [updatedResult] = await Promise.all([
+      removeUserPromise,
+      removeMemberPromise,
+    ]);
+
+    if (updatedResult.modifiedCount == 0) {
       res.status(400).send({
         success: false,
         message: "Something went wrong while removing the user",
       });
     }
+    res.status(200).json({
+      success: true,
+      message: "User removed",
+      chatMsg: `removed`,
+    });
   } catch (err: any) {
     res.status(500).send({ success: false, message: err.message });
   }
@@ -408,38 +498,36 @@ const leaveChat: RequestHandler = async (req, res) => {
   try {
     const chatId = req.params.id;
     const { userId } = req.body;
-
-    const adminLeave = await Chat.updateOne(
-      { _id: chatId, admins: userId },
+    const chatUpdatePromise = Chat.updateOne(
+      { _id: chatId },
       {
         $set: { [`removedUsers.${userId}`]: new Date() },
-        $pull: { admins: userId, users: userId },
+        $pull: { users: userId, admins: userId },
       }
     );
 
-    if (adminLeave.modifiedCount == 0) {
-      const userLeave = await Chat.updateOne(
-        { _id: chatId, users: userId },
-        {
-          $set: { [`removedUsers.${userId}`]: new Date() },
-          $pull: { users: userId },
-        }
-      );
+    const memberDeletePromise = ChatMember.deleteOne({
+      chat: chatId,
+      user: userId,
+    });
 
-      if (userLeave.modifiedCount == 0) {
-        return res
-          .status(404)
-          .send({ success: false, message: "User or Chat not found" });
-      }
+    const [updateResult] = await Promise.all([
+      chatUpdatePromise,
+      memberDeletePromise,
+    ]);
+
+    if (updateResult.modifiedCount === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "Chat not found or user already left",
+      });
     }
 
-    const removedUser = await User.findOne({ _id: userId }).select(
-      "_id name createdAt"
-    );
+    const removedUser = await User.findById(userId).select("_id name");
 
     res.status(200).send({
       success: true,
-      message: "User removed",
+      message: "User left successfully",
       chatMsg: `left`,
       moderator: removedUser,
     });
@@ -593,6 +681,29 @@ const loadMoreChats: RequestHandler = async (req, res) => {
   }
 };
 
+const lastSeenMessage: RequestHandler = async (req, res) => {
+  try {
+    const {lastSeenMessagePerChat, userId} = req.body;
+    const updateMember = await ChatMember.bulkWrite(
+      lastSeenMessagePerChat.map((c: any) => ({
+        updateOne: {
+          filter: { user: userId, chat:c[0] },
+          update: { $set: { lastSeenMessage: c[1].lastSeenMessage, unreadCount:c[1].unreadCount } },
+        },
+      }))
+    );
+    if (updateMember.modifiedCount == 0) {
+      res
+        .status(404)
+        .send({ success: false, message: "Chat member not found" });
+    }
+    res.status(200).send({ success: true, message: "Updated successfully" });
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).send(err.message);
+  }
+};
+
 export default {
   getUserChats,
   createGroupChat,
@@ -606,4 +717,5 @@ export default {
   createOrGetChat,
   changeChatTheme,
   loadMoreChats,
+  lastSeenMessage,
 };

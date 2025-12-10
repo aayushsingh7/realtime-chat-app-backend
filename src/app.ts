@@ -9,7 +9,7 @@ import userRoutes from "./routes/userRoutes";
 import messageRoutes from "./routes/messageRoutes";
 import chatRoutes from "./routes/chatRoutes";
 import statusRoutes from "./routes/statusModel";
-import authRoutes from "./routes/authRoutes"
+import authRoutes from "./routes/authRoutes";
 import cookieParser from "cookie-parser";
 import { ChatType, MessageType, UserType } from "./types/types";
 import User from "./models/userModel";
@@ -39,7 +39,7 @@ app.use("/api", userRoutes);
 app.use("/api", messageRoutes);
 app.use("/api", chatRoutes);
 app.use("/api", statusRoutes);
-app.use("/api", authRoutes)
+app.use("/api", authRoutes);
 
 let server = app.listen(process.env.PORT, () => {
   console.log(`Server Started At PORT: ${process.env.PORT}`);
@@ -62,13 +62,25 @@ const io = require("socket.io")(server, {
 
 io.on("connection", (socket: any) => {
   socket.on("setup", (userData: UserType) => {
-    const userId = userData._id;
-    socket.join(userId);
+    socket.userId = userData._id;
+    socket.join(socket.userId);
   });
+
+  // socket.on("join chat", async(chatId: string, oldChat:string) => {
+  //   if(oldChat) socket.leave(oldChat)
+  //   socket.join(chatId);
+  //   const sockets = await io.in(chatId).fetchSockets();
+  //   const userIds = sockets.map((s:any) => s.userId);
+  //   console.log(userIds);
+  // });
+
+  // socket.on("leave chat", (chatId:string)=> {
+  //   socket.leave(chatId)
+  // })
 
   socket.on("new message", (newMessage: MessageType, chat: any) => {
     if (!chat || !chat.users) return;
-    console.log(chat.users)
+    console.log(chat.users);
     chat.users.forEach((user: UserType) => {
       if (user._id === newMessage.sender._id) return;
       io.in(user._id).emit("new message received", newMessage, chat);
@@ -191,12 +203,16 @@ io.on("connection", (socket: any) => {
     }
   );
 
-  socket.on("message seen", (messageIds: string[], chat: any, u: UserType) => {
-    if (!chat && !chat.users) return console.log("Invalid chat");
-    chat.users.forEach((user: UserType) => {
-      // if (user._id === u._id) return;
-      io.in(user._id).emit("message seen received", messageIds, chat, u);
-    });
+  socket.on("message seen", (data:any) => {
+    console.log({data})
+    data.chat.users.map((user:UserType)=> {
+      io.in(user._id).emit("message seen received", data)
+    })
+    // if (!chat && !chat.users) return console.log("Invalid chat");
+    // chat.users.forEach((user: UserType) => {
+    //   // if (user._id === u._id) return;
+    //   io.in(user._id).emit("message seen received", messageIds, chat, u);
+    // });
   });
 
   socket.on("typing started", (typingUser: UserType, chat: any) => {

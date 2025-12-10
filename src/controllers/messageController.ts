@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import Chat from "../models/chatModel";
 import Message from "../models/messageModel";
 import User from "../models/userModel";
+import ChatMember from "../models/chatMemberModel";
 
 const addMessage: RequestHandler = async (req, res) => {
   try {
@@ -29,7 +30,6 @@ const addMessage: RequestHandler = async (req, res) => {
       message: messageData,
       fileName: fileName || null,
       document,
-      seenBy: [userId],
       fileSize: fileSize || 0,
       chat: chatId,
       caption,
@@ -57,12 +57,12 @@ const addMessage: RequestHandler = async (req, res) => {
         })
       : saved;
 
-    // await Chat.updateOne(
-    //   { _id: chatId },
-    //   {
-    //     $set: { latestMessage: newMessage._id },
-    //   }
-    // );
+    await Chat.updateOne(
+      { _id: chatId },
+      {
+        $set: { latestMessage: newMessage._id },
+      }
+    );
 
     return res.status(200).send({
       success: true,
@@ -229,24 +229,29 @@ const messages: RequestHandler = async (req, res) => {
         },
       ])
       .sort({ createdAt: -1 })
-      .limit(20)
+      .limit(21)
       .skip(offset)
       .lean();
 
-    const totalMessages = await Message.countDocuments({ chat: chatId });
+    let participants = await ChatMember.find({chat:chatId}).select("user lastSeenMessage unreadCount").lean();
+
     if (messages.length > 0) {
       res.status(200).send({
         success: true,
         message: "Messages fetched successfully",
         messages: messages,
-        totalDocumentsCount: totalMessages,
-        isMore: totalMessages > offset + 25,
+        isMore: messages.length > 20,
+        participants,
+        user:req.body.userId
       });
     } else {
       res.status(200).send({
         success: false,
         message: "No messages yet",
         messages: [],
+        participants,
+        isMore:false,
+        user:req.body.userId
       });
     }
   } catch (err: any) {
@@ -331,25 +336,25 @@ const removeFromStarredMessages: RequestHandler = async (req, res) => {
   }
 };
 
-const messagesSeen: RequestHandler = async (req, res) => {
-  try {
-    const { messageIds, userId } = req.body;
+// const messagesSeen: RequestHandler = async (req, res) => {
+//   try {
+//     const { messageIds, userId } = req.body;
 
-    const objectIdArray = messageIds.map((id: string) => {
-      return new ObjectId(id);
-    });
+//     const objectIdArray = messageIds.map((id: string) => {
+//       return new ObjectId(id);
+//     });
 
-    const response = await Message.updateMany(
-      { _id: { $in: objectIdArray } },
-      { $push: { seenBy: userId } }
-    );
-    if (response.modifiedCount > 0) {
-      res.status(200).send({ success: true, message: "Success" });
-    }
-  } catch (err: any) {
-    res.status(500).send(err.message);
-  }
-};
+//     const response = await Message.updateMany(
+//       { _id: { $in: objectIdArray } },
+//       { $push: { seenBy: userId } }
+//     );
+//     if (response.modifiedCount > 0) {
+//       res.status(200).send({ success: true, message: "Success" });
+//     }
+//   } catch (err: any) {
+//     res.status(500).send(err.message);
+//   }
+// };
 
 const searchStarredMessages: RequestHandler = async (req, res) => {
   try {
@@ -399,7 +404,6 @@ export default {
   messages,
   getStarredMessages,
   addToStarredMessages,
-  messagesSeen,
   removeFromStarredMessages,
   searchStarredMessages,
 };
