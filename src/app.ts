@@ -13,6 +13,7 @@ import authRoutes from "./routes/authRoutes";
 import cookieParser from "cookie-parser";
 import { ChatType, MessageType, UserType } from "./types/types";
 import User from "./models/userModel";
+import { setupSocketServer } from "./config/socket";
 
 cloudinary.v2.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -42,8 +43,14 @@ app.use("/api", statusRoutes);
 app.use("/api", authRoutes);
 
 let server = app.listen(process.env.PORT, () => {
-  console.log(`Server Started At PORT: ${process.env.PORT}`);
+  console.log(`Server Started At PORT: ${process.env.PORT} ✅`);
 });
+
+server.on("error", (err) => {
+  console.error("Error Starting The Server ❌", err);
+});
+
+// setupSocketServer(server);
 
 const io = require("socket.io")(server, {
   cors: {
