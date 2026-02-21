@@ -1,24 +1,24 @@
 import express from "express";
-import chatControllers from "../controllers/chatController";
+import chatController from "../controllers/chatController";
 import userAuthentication from "../middleware/userAuthentication";
 import profileImageUpload from "../middleware/profileImageUpload";
 import uploadFiles from "../middleware/uploadFiles";
 
 const router = express.Router();
 
-router.get("/chats", userAuthentication, chatControllers.getUserChats);
-router.post("/chats", userAuthentication, chatControllers.createOrGetChat);
-router.get("/chats/load-more", userAuthentication, chatControllers.loadMoreChats);
-router.put("/chats/:id/clear-or-delete", userAuthentication, chatControllers.clearOrDeleteChat);
-router.put("/chats/:id/theme", userAuthentication, uploadFiles, chatControllers.changeChatTheme);
-router.put("/chats/:id/info", userAuthentication, profileImageUpload, chatControllers.updateChatInfo);
-router.patch("/chats/last-seen-bulk", userAuthentication, chatControllers.lastSeenMessage); 
+router.get("/chats", userAuthentication, chatController.getUserChats);
+router.post("/chats", userAuthentication, chatController.createOrGetChat);
+router.get("/chats/load-more", userAuthentication, chatController.loadMoreChats);
+router.put("/chats/:id/clear-or-delete", userAuthentication, chatController.clearOrDeleteChat);
+router.put("/chats/:id/theme", userAuthentication, uploadFiles, chatController.changeChatTheme);
+router.put("/chats/:id/info", userAuthentication, profileImageUpload, chatController.updateChatInfo);
+router.patch("/chats/last-seen-bulk", userAuthentication, chatController.lastSeenMessage); 
 
-router.post("/groups", userAuthentication, chatControllers.createGroupChat);
-router.put("/groups/:id/users/add", userAuthentication, chatControllers.addUser);
-router.put("/groups/:id/users/remove", userAuthentication, chatControllers.removeUser);
-router.put("/groups/:id/admins/promote", userAuthentication, chatControllers.addAdmin);
-router.put("/groups/:id/admins/demote", userAuthentication, chatControllers.removeAdmin);
-router.put("/groups/:id/leave", userAuthentication, chatControllers.leaveChat);
+router.post("/groups", userAuthentication, chatController.createGroupChat);
+router.put("/groups/:id/users/add", userAuthentication, chatController.addUser);
+router.put("/groups/:id/users/remove", userAuthentication, chatController.removeUser);
+router.put("/groups/:id/admins/promote", userAuthentication, chatController.addAdmin);
+router.put("/groups/:id/admins/demote", userAuthentication, chatController.removeAdmin);
+router.put("/groups/:id/leave", userAuthentication, chatController.leaveChat);
 
 export default router;
