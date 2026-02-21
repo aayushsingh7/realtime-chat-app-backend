@@ -8,7 +8,7 @@ import cloudinary from "cloudinary";
 import userRoutes from "./routes/userRoutes";
 import messageRoutes from "./routes/messageRoutes";
 import chatRoutes from "./routes/chatRoutes";
-import statusRoutes from "./routes/statusModel";
+import statusRoutes from "./routes/statusRoutes";
 import authRoutes from "./routes/authRoutes";
 import cookieParser from "cookie-parser";
 import { ChatType, MessageType, UserType } from "./types/types";
