@@ -165,7 +165,7 @@ class ChatService {
           select: "_id username name",
         },
         select:
-          "msgType message fileName document sender seenBy moderator users",
+          "msgType message fileName document sender seenBy moderator users createdAt",
       })
       .populate({
         path: "users",
