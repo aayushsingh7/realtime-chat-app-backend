@@ -5,8 +5,12 @@
   "main": "dist/app.js",
   "scripts": {
     "start": "node dist/app.js",
+    "start:msg-worker": "node dist/workers/messageWorker.js",
+    "start:sync-worker": "node dist/workers/presenceSyncWorker.js",
     "build": "tsc",
-    "dev": "nodemon --config nodemon.json src/app.ts",
+    "dev": "nodemon src/app.ts",
+    "dev:msg-worker": "nodemon src/workers/messageWorker.ts",
+    "dev:sync-worker": "nodemon src/workers/presenceSyncWorker.ts",
     "test:concurrency": "artillery run tests/artillery/concurrency.yaml"
   },
   "author": "Aayush Singh",
