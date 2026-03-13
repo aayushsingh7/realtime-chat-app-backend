@@ -313,7 +313,6 @@ export const setupSocketServer = (httpServer: any) => {
         { $set: { lastSeen: new Date().toISOString() } },
       );
 
-      //@ts-expect-error
       await ChatMember.bulkWrite(bulkUpdate);
     });
   });

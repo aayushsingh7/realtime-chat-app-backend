@@ -1,13 +1,18 @@
-import User from "../models/userModel";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import CustomError from "../utils/customError";
+import { Model } from "mongoose";
+import IUser from "../types/userType";
 
 class AuthService {
+  constructor(private readonly userModel: Model<IUser>) {
+    this.userModel = userModel;
+  }
+
   async register(userData: any) {
     const { username, email, password, name } = userData;
-    const isUserExistsOnEmail = await User.findOne({ email: email });
-    const isUserExistsOnUsername = await User.findOne({ username: username });
+    const isUserExistsOnEmail = await this.userModel.findOne({ email: email });
+    const isUserExistsOnUsername = await this.userModel.findOne({ username: username });
 
     if (isUserExistsOnEmail || isUserExistsOnUsername) {
       throw new CustomError(
@@ -20,7 +25,7 @@ class AuthService {
 
     const hashPassword = await bcryptjs.hash(password, 12);
 
-    const newUser = new User({
+    const newUser = new this.userModel({
       name: name,
       email: email,
       username: username,
@@ -42,7 +47,7 @@ class AuthService {
 
   async login(credentials: any) {
     const { email, password } = credentials;
-    let isUserExists = await User.findOne({ email: email });
+    let isUserExists = await this.userModel.findOne({ email: email });
     if (!isUserExists) {
       throw new CustomError("Sorry, no registered uesr found with the given email", 404);
     }
@@ -65,7 +70,7 @@ class AuthService {
   }
 
   async getLoggedInUser(userId: string) {
-    const getUser = await User.findOne({ _id: userId }).select(
+    const getUser = await this.userModel.findOne({ _id: userId }).select(
       "_id image name email slogan createdAt username  lastSeen starredMessages blockedUsers"
     );
     if (!getUser) {
@@ -75,4 +80,4 @@ class AuthService {
   }
 }
 
-export default new AuthService();
+export default AuthService;

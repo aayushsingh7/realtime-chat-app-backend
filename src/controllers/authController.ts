@@ -1,10 +1,13 @@
 import { Request, Response } from "express";
-import authService from "../services/authService";
+import AuthService from "../services/authService";
 
 class AuthController {
+  constructor(private readonly authService:AuthService) {
+    this.authService = authService;
+  }
   register = async (req: Request, res: Response) => {
     try {
-      const { token } = await authService.register(req.body);
+      const { token } = await this.authService.register(req.body);
 
       res.cookie("chatverse", token, {
         httpOnly: true,
@@ -28,7 +31,7 @@ class AuthController {
 
   login = async (req: Request, res: Response) => {
     try {
-      const { token } = await authService.login(req.body);
+      const { token } = await this.authService.login(req.body);
 
       res.cookie("chatverse", token, {
         httpOnly: true,
@@ -53,7 +56,7 @@ class AuthController {
   getLoggedInUser = async (req: Request, res: Response) => {
     try {
       const userId = req.body.userId;
-      const user = await authService.getLoggedInUser(userId);
+      const user = await this.authService.getLoggedInUser(userId);
 
       res.status(200).send({
         status: "success",
@@ -88,4 +91,4 @@ class AuthController {
   };
 }
 
-export default new AuthController();
+export default AuthController;
