@@ -1,6 +1,7 @@
-import mongoose, { Schema } from "mongoose";
+import { Schema, model } from "mongoose";
+import IUser from "../types/userType";
 
-const userModel = new mongoose.Schema(
+const userModel = new Schema<IUser>(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
@@ -8,10 +9,10 @@ const userModel = new mongoose.Schema(
     image: {
       type: String,
       default:
-        "https://i.pinimg.com/474x/ec/e2/b0/ece2b0f541d47e4078aef33ffd22777e.jpg",
+        "https://res.cloudinary.com/dvk80x6fi/image/upload/v1773416425/ece2b0f541d47e4078aef33ffd22777e_gd6ski.jpg",
     },
-    blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "user" }],
-    starredMessages: [{ type: mongoose.Schema.Types.ObjectId, ref: "message" }],
+    blockedUsers: [{ type: Schema.Types.ObjectId, ref: "user" }],
+    starredMessages: [{ type: Schema.Types.ObjectId, ref: "message" }],
     clearedChats: {
       type: Map,
       of: Date,
@@ -21,17 +22,17 @@ const userModel = new mongoose.Schema(
       of: Date,
     },
     onlineStatus: { type: Boolean, default: false },
-    lastSeen: { type: Date, default: new Date().toISOString() },
+    lastSeen: { type: Date, default: Date.now},
     description: { type: String, default: "" },
     role: { type: String, default: "user" },
     username: { type: String, default: "" },
     slogan: { type: String, default: "Hey there! i am using ChatVerse😊." },
     activeStatus: { type: Boolean, default: false },
-    latestStatus: { type: Schema.Types.ObjectId, ref: "status" },
+    status: { type: Schema.Types.ObjectId, ref: "status" },
   },
   { timestamps: true }
 );
 
-const User = mongoose.model("user", userModel);
+const User = model<IUser>("user", userModel);
 
 export default User;
