@@ -1,11 +1,14 @@
 import { Server, Socket } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createRedisClient, redis } from "../config/redis";
-import { ChatType, MessageType, UserType } from "../types/types";
 import User from "../models/userModel";
 import Chat from "../models/chatModel";
 import { addNewMessageJob } from "../queues/messageQueue";
 import { presneceSyncJob } from "../queues/presenceSyncQueue";
+import ChatMember from "../models/chatMemberModel";
+import {IChat, IChatPopulated} from "../types/chatType";
+import IUser from "../types/userType";
+import IMessage from "../types/messageType";
 
 const pubClient = createRedisClient();
 const subClient = pubClient.duplicate();
@@ -23,7 +26,7 @@ export const setupSocketServer = (httpServer: any) => {
 
     if (!token) return next(new Error("No token"));
 
-    socket.data.userId = token; 
+    socket.data.userId = token;
     next();
   });
 
@@ -61,10 +64,10 @@ export const setupSocketServer = (httpServer: any) => {
 
     // ===== CHAT CORE EVENTS =====
 
-    socket.on("chat:create", async (chatData: ChatType) => {
+    socket.on("chat:create", async (chatData: IChatPopulated) => {
       if (!chatData) return;
-
-      chatData.users.forEach((user: UserType) => {
+      
+      chatData.users.forEach((user:IUser) => {
         socket.to(`user:${user._id}`).emit("chat:created", chatData);
       });
     });
@@ -147,7 +150,7 @@ export const setupSocketServer = (httpServer: any) => {
     socket.on(
       "chat:theme:change",
 
-      (chatId: string, theme: any, alertMessage: MessageType) => {
+      (chatId: string, theme: any, alertMessage: IMessage) => {
         socket
           .in(`chat:${chatId}`)
           .emit("chat:theme:changed", theme, chatId, alertMessage);
@@ -170,13 +173,13 @@ export const setupSocketServer = (httpServer: any) => {
 
     socket.on(
       "chat:group:user:remove",
-      async (user: UserType, chat: ChatType, method: string) => {
+      async (user: IUser, chat: IChatPopulated, method: string) => {
         const updatedChat = {
           ...chat,
           users: chat.users.filter((u) => u._id !== user._id),
         };
 
-        updatedChat.users.forEach((member: UserType) => {
+        updatedChat.users.forEach((member: IUser) => {
           socket
             .in(`user:${member._id}`)
             .emit("chat:group:user:removed", user, chat, method);
@@ -186,7 +189,7 @@ export const setupSocketServer = (httpServer: any) => {
 
     socket.on(
       "chat:group:edit",
-      (updatedBy: UserType, chatData: ChatType, chatId: string) => {
+      (updatedBy: IUser, chatData: IChatPopulated, chatId: string) => {
         socket
           .in(`chat:${chatId}`)
           .emit("chat:group:edited", updatedBy, chatData, chatId);
@@ -247,11 +250,11 @@ export const setupSocketServer = (httpServer: any) => {
 
     // ===== TYPING EVENTS =====
 
-    socket.on("chat:typing:start", (user: UserType, chatId: string) => {
+    socket.on("chat:typing:start", (user: IUser, chatId: string) => {
       socket.in(`chat:${chatId}`).emit("chat:typing:started", user, chatId);
     });
 
-    socket.on("chat:typing:stop", (user: UserType, chatId: string) => {
+    socket.on("chat:typing:stop", (user: IUser, chatId: string) => {
       socket.in(`chat:${chatId}`).emit("chat:typing:stopped", user, chatId);
     });
 
@@ -265,14 +268,26 @@ export const setupSocketServer = (httpServer: any) => {
         `user:${userId}:interacted_chats`,
       );
       const pipeline = redis.pipeline();
+      const bulkUpdate = [];
       for (let chat of interactedChats) {
+        bulkUpdate.push({
+          updateOne: {
+            filter: { user: userId, chat },
+            update: { $set: { lastSeenMessage: Date.now() } },
+          },
+        });
         pipeline.zadd(`chat:${chat}:oldest-online`, Date.now(), userId);
       }
 
-      console.log("remove user when disconnected");
+
       const currentChat = await redis.get(`user:${userId}:current-chat`);
       if (currentChat) {
-        console.log("CURRENT CHAT LAST-SEEN UPDATE", currentChat, Date.now());
+        bulkUpdate.push({
+          updateOne: {
+            filter: { user: userId, chat:currentChat },
+            update: { $set: { lastSeen: Date.now() } },
+          },
+        });
         pipeline.zadd(`chat:${currentChat}:last-seen`, Date.now(), userId);
         pipeline.del(currentChat);
       }
@@ -297,6 +312,9 @@ export const setupSocketServer = (httpServer: any) => {
         { _id: userId },
         { $set: { lastSeen: new Date().toISOString() } },
       );
+
+      //@ts-expect-error
+      await ChatMember.bulkWrite(bulkUpdate);
     });
   });
 

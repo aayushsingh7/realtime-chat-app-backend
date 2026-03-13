@@ -11,8 +11,6 @@ import chatRoutes from "./routes/chatRoutes";
 import statusRoutes from "./routes/statusRoutes";
 import authRoutes from "./routes/authRoutes";
 import cookieParser from "cookie-parser";
-import { ChatType, MessageType, UserType } from "./types/types";
-import User from "./models/userModel";
 import { setupSocketServer } from "./config/socket";
 
 cloudinary.v2.config({
