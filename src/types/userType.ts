@@ -5,6 +5,7 @@ interface IUser extends Document {
   _id: Types.ObjectId;
   name: string;
   image: string;
+  password:string;
   email?: string;
   blockedUsers: Types.ObjectId[];
   starredMessages: Types.ObjectId[];

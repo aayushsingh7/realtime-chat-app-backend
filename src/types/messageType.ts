@@ -1,5 +1,7 @@
 import { Document, Types } from "mongoose";
 
+type MessageType = "text" | "image" | "video" | "alert" | "pdf" | string;
+
 export interface IEmoji {
   user: Types.ObjectId;
   emoji: string;
@@ -9,6 +11,7 @@ interface IMessage extends Document {
   _id: Types.ObjectId;
   sender: Types.ObjectId;
   message: string;
+  msgType:MessageType;
   reactEmoji: IEmoji;
   document: boolean;
   eventPerformed: string;
