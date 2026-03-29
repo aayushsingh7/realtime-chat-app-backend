@@ -1,64 +1,66 @@
-import Status from "../models/statusModel";
-import User from "../models/userModel";
+import {Model} from "mongoose";
 import CustomError from "../utils/customError";
+import IStatus from "../types/statusType";
+import UserService from "./userService";
 
 class StatusService {
-  async getStatus(userId: string) {
-    const twentyFourHoursAgo = new Date();
-    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+    private userService!: UserService;
 
-    const status = await Status.find({
-      postedBy: userId,
-      createdAt: { $gte: twentyFourHoursAgo },
-    });
+    constructor(private readonly statusModel: Model<IStatus>) {}
 
-    if (status.length === 0) {
-      throw new CustomError("No active status found", 404);
+    setUserService(userService: UserService) {
+        this.userService = userService;
+    }
+    async getStatus(userId: string) {
+        const twentyFourHoursAgo = new Date();
+        twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+        const status = await this.statusModel.find({
+            postedBy: userId,
+            createdAt: {$gte: twentyFourHoursAgo},
+        });
+
+        if (status.length === 0) {
+            throw new CustomError("No active status found", 404);
+        }
+
+        return status;
     }
 
-    return status;
-  }
+    async addStatus(data: any) {
+        const {extension, fileType, url, postedBy, chatId} = data;
+        const newStatus = new this.statusModel({
+            extension,
+            fileType,
+            url,
+            postedBy,
+            seenBy: [],
+            chatId,
+        });
 
-  async addStatus(data: any) {
-    const { extension, fileType, url, postedBy, chatId } = data;
-    const newStatus = new Status({
-      extension,
-      fileType,
-      url,
-      postedBy,
-      seenBy: [],
-      chatId,
-    });
+        await newStatus.save();
 
-    await newStatus.save();
-    
-    await User.updateOne(
-      { _id: postedBy },
-      { $set: { activeStatus: true, latestStatus: newStatus } }
-    );
+        await this.userService.updateActiveStatus(postedBy, newStatus);
 
-    return newStatus;
-  }
-
-  async statusSeen(userId: string, statusId: string) {
-    const updateStatus = await Status.updateOne(
-      { _id: statusId },
-      { $push: { seenBy: userId } }
-    );
-
-    if (!updateStatus.acknowledged) {
-      throw new CustomError("Something went wrong, please try again later", 400);
+        return newStatus;
     }
-    return true;
-  }
 
-  async removeStatus(statusId: string) {
-    const deleteOperation = await Status.deleteOne({ _id: statusId });
-    if (!deleteOperation.acknowledged) {
-      throw new CustomError("Something went wrong, please try again later", 400);
+    async statusSeen(userId: string, statusId: string) {
+        const updateStatus = await this.statusModel.updateOne({_id: statusId}, {$push: {seenBy: userId}});
+
+        if (!updateStatus.acknowledged) {
+            throw new CustomError("Something went wrong, please try again later", 400);
+        }
+        return true;
     }
-    return true;
-  }
+
+    async removeStatus(statusId: string) {
+        const deleteOperation = await this.statusModel.deleteOne({_id: statusId});
+        if (!deleteOperation.acknowledged) {
+            throw new CustomError("Something went wrong, please try again later", 400);
+        }
+        return true;
+    }
 }
 
-export default new StatusService();
+export default StatusService;
