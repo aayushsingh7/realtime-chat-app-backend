@@ -1,5 +1,5 @@
 import {Schema, model} from "mongoose";
-import IMessage from "../types/messageType";
+import {IMessage} from "../types/messageType";
 
 const messageSchema: Schema = new Schema<IMessage>(
     {
@@ -13,12 +13,11 @@ const messageSchema: Schema = new Schema<IMessage>(
             },
         ],
         document: {type: Boolean, false: false},
-        eventPerformed: {type: String},
-        moderator: {
+        actor: {
             _id: {type: Schema.Types.ObjectId},
             name: {type: String},
         },
-        user: {
+        target: {
             _id: {type: Schema.Types.ObjectId},
             name: {type: String},
         },
